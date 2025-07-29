@@ -15,12 +15,9 @@ describe('reactiveToRefs()', async () => {
 
     const refs = reactiveToRefs(obj)
 
-    // @ts-expect-error
     expect(refs.foo.value).toEqual('foo')
-    // @ts-expect-error
     expect(refs.bar.value).toEqual('bar')
     expect(refs.func).toBe(undefined)
-    // @ts-expect-error
     expect(refs.re.value).toEqual({ a: 'b' })
     expect(refs.raw).toEqual(undefined)
   })

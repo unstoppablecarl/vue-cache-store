@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { type Context, defineCacheStore } from '../src'
 import { mount } from '@vue/test-utils'
 import { computed, nextTick, reactive, ref, toValue, watch } from 'vue'
-import { reactiveToRefs } from '../src/defineCacheStore'
 
 describe('define cache store', async () => {
+
   it('ref()', async () => {
     const x = ref('a')
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context) => {
+    const useTestCache = defineCacheStore((id) => {
       return {
         id: ref(id),
         x,
@@ -20,13 +20,10 @@ describe('define cache store', async () => {
       setup() {
         const cache = useTestCache()
         const comp = computed(() => cache.get(ID))
-
-        const item = reactiveToRefs(cache.get(ID))
-        const { x } = reactiveToRefs(cache.get(ID))
-        const { id } = reactiveToRefs(cache.get(ID))
-
+        const item = cache.get(ID)
         const itemRefs = cache.getRefs(ID)
-        const { x: refsX, id: refsID } = cache.getRefs(ID)
+        const { x } = cache.getRefs(ID)
+        const { id } = cache.getRefs(ID)
 
         function setX(v: any) {
           itemRefs.x.value = v
@@ -34,15 +31,12 @@ describe('define cache store', async () => {
 
         return {
           comp,
-
+          item,
+          itemRefs,
           x,
-          refsX,
-          itemX: item.x,
-          itemRefsX: itemRefs.x,
           id,
+          itemRefsX: itemRefs.x,
           compID: comp.value.id,
-          refsID,
-          itemID: item.id,
           itemRefsID: itemRefs.id,
           setX,
 
@@ -54,19 +48,7 @@ describe('define cache store', async () => {
 
     const wrapper = mount(App, {})
 
-    expect(wrapper.vm.id).toBe(ID)
-    expect(wrapper.vm.refsID).toBe(ID)
-    expect(wrapper.vm.itemID).toBe(ID)
-    // @ts-expect-error
-    expect(wrapper.vm.comp.id).toBe(ID)
-
-    expect(wrapper.vm.itemX).toBe('a')
-    expect(wrapper.vm.x).toBe('a')
-
-    expect(wrapper.vm.itemRefsX).toBe('a')
-    expect(wrapper.vm.refsX).toBe('a')
-    // @ts-expect-error
-    expect(wrapper.vm.comp.x).toBe('a')
+    testState('a', ID)
 
     const VAL = 'b'
     // @ts-expect-error
@@ -74,17 +56,7 @@ describe('define cache store', async () => {
 
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.vm.itemX).toBe(VAL)
-    expect(wrapper.vm.x).toBe(VAL)
-
-    expect(wrapper.vm.itemRefsX).toBe(VAL)
-    expect(wrapper.vm.refsX).toBe(VAL)
-    // @ts-expect-error
-    expect(wrapper.vm.comp.x).toBe(VAL)
-
-    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
-    expect(cache.getUseCount()).toBe(1)
-    expect(cache.ids()).toEqual([ID])
+    testState(VAL, ID)
 
     const VAL2 = 'c'
     // @ts-expect-error
@@ -92,13 +64,9 @@ describe('define cache store', async () => {
 
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.vm.itemX).toBe(VAL2)
-    expect(wrapper.vm.x).toBe(VAL2)
+    testState(VAL2, ID)
 
-    expect(wrapper.vm.itemRefsX).toBe(VAL2)
-    expect(wrapper.vm.refsX).toBe(VAL2)
-    // @ts-expect-error
-    expect(wrapper.vm.comp.x).toBe(VAL2)
+    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
 
     expect(cache.getUseCount()).toBe(1)
     expect(cache.ids()).toEqual([ID])
@@ -110,12 +78,30 @@ describe('define cache store', async () => {
     expect(cache.ids()).toEqual([])
     expect(cache.has(ID)).toEqual(false)
 
+    function testState(x: string, id: number) {
+
+      // @ts-expect-error
+      expect(wrapper.vm.comp.value).toBe(undefined)
+      // @ts-expect-error
+      expect(wrapper.vm.comp.id).toBe(id)
+      // @ts-expect-error
+      expect(wrapper.vm.comp.x).toBe(x)
+
+      expect(wrapper.vm.id).toBe(id)
+      expect(wrapper.vm.x).toBe(x)
+      expect(wrapper.vm.itemRefsX).toBe(x)
+      expect(wrapper.vm.item).toEqual({ id, x })
+      // @ts-expect-error
+      expect(wrapper.vm.item.x).toEqual(x)
+      // @ts-expect-error
+      expect(wrapper.vm.item.id).toEqual(id)
+
+    }
   })
 
   it('computed()', async () => {
-
     const x = ref('a')
-    const x2 = ref('x')
+    const x2 = ref('b')
 
     const c = computed(() => x.value)
     const c2 = computed({
@@ -123,7 +109,7 @@ describe('define cache store', async () => {
       set: (value => x2.value = value),
     })
 
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context) => {
+    const useTestCache = defineCacheStore((id) => {
       return {
         id: computed(() => id),
         c,
@@ -137,41 +123,23 @@ describe('define cache store', async () => {
       setup() {
         const cache = useTestCache()
         const comp = computed(() => cache.get(ID))
-
-        const item = reactiveToRefs(cache.get(ID))
-        let { c, c2 } = reactiveToRefs(cache.get(ID))
-        const { id } = reactiveToRefs(cache.get(ID))
-
+        const item = cache.get(ID)
         const itemRefs = cache.getRefs(ID)
-        const { c: refsC } = cache.getRefs(ID)
-        const { c2: refsC2 } = cache.getRefs(ID)
-
-        const { id: refsID } = cache.getRefs(ID)
-
-        function setX(v: any) {
-          itemRefs.x.value = v
-        }
+        const { id, c, c2 } = cache.getRefs(ID)
 
         function setC2(v: any) {
-          // @ts-expect-error
           c2.value = v
         }
 
         return {
           comp,
-
-          c2,
-          refsC2,
-
-          c,
-          refsC,
-          itemC: item.c,
-          itemRefsC: itemRefs.c,
+          item,
           id,
-          refsID,
-          itemID: item.id,
+          c,
+          c2,
+          itemRefs,
+          itemRefsC: itemRefs.c,
           itemRefsID: itemRefs.id,
-          setX,
           setC2,
         }
       },
@@ -180,40 +148,50 @@ describe('define cache store', async () => {
 
     const wrapper = mount(App, {})
 
-    expect(wrapper.vm.id).toBe(ID)
-    expect(wrapper.vm.refsID).toBe(ID)
-    expect(wrapper.vm.itemID).toBe(ID)
-
-    expect(wrapper.vm.itemC).toBe('a')
-    expect(wrapper.vm.c).toBe('a')
-    expect(wrapper.vm.itemRefsC).toBe('a')
-    expect(wrapper.vm.refsC).toBe('a')
-    // @ts-expect-error
-    expect(wrapper.vm.comp.c).toBe('a')
+    testState('a', 'b', ID)
 
     const VAL = 'b'
     x.value = VAL
 
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.vm.itemC).toBe(VAL)
-    expect(wrapper.vm.c).toBe(VAL)
-
-    expect(wrapper.vm.itemRefsC).toBe(VAL)
-    expect(wrapper.vm.refsC).toBe(VAL)
-    // @ts-expect-error
-    expect(wrapper.vm.comp.c).toBe(VAL)
+    testState(VAL, 'b', ID)
 
     // @ts-expect-error
     wrapper.vm.setC2('z')
 
-    expect(c2.value).toEqual('z')
+    await wrapper.vm.$nextTick()
+    testState(VAL, 'z', ID)
+
+    function testState(c: string, c2: string, id: number) {
+      expect(wrapper.vm.id).toBe(id)
+      // @ts-expect-error
+      expect(wrapper.vm.itemRefs.id.value).toBe(id)
+      expect(wrapper.vm.c).toBe(c)
+      expect(wrapper.vm.c2).toBe(c2)
+      // @ts-expect-error
+      expect(wrapper.vm.itemRefs.id.value).toBe(id)
+      // @ts-expect-error
+      expect(wrapper.vm.itemRefs.c.value).toBe(c)
+      expect(wrapper.vm.itemRefsC).toBe(c)
+      expect(wrapper.vm.itemRefsID).toBe(id)
+      // @ts-expect-error
+      expect(wrapper.vm.comp.c).toBe(c)
+      // @ts-expect-error
+      expect(wrapper.vm.comp.id).toBe(id)
+
+      expect(wrapper.vm.item).toEqual({ id, c, c2 })
+      // @ts-expect-error
+      expect(wrapper.vm.item.id).toEqual(id)
+      // @ts-expect-error
+      expect(wrapper.vm.item.c).toEqual(c)
+    }
   })
 
   it('reactive()', async () => {
     const r = reactive({ x: 'a' })
 
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context) => {
+    const useTestCache = defineCacheStore((id) => {
       return {
         r,
       }
@@ -225,18 +203,14 @@ describe('define cache store', async () => {
       setup() {
         const cache = useTestCache()
         const comp = computed(() => cache.get(ID))
-
-        const item = reactiveToRefs(cache.get(ID))
-        const { r } = reactiveToRefs(cache.get(ID))
-
+        const item = cache.get(ID)
+        const { r } = cache.getRefs(ID)
         const itemRefs = cache.getRefs(ID)
-        const { r: refsR } = cache.getRefs(ID)
 
         return {
           comp,
-
+          item,
           r,
-          refsR,
           itemR: item.r,
           itemRefsR: itemRefs.r,
         }
@@ -249,9 +223,10 @@ describe('define cache store', async () => {
     expect(wrapper.vm.itemR).toEqual({ x: 'a' })
     expect(wrapper.vm.r).toEqual({ x: 'a' })
     expect(wrapper.vm.itemRefsR).toEqual({ x: 'a' })
-    expect(wrapper.vm.refsR).toEqual({ x: 'a' })
     // @ts-expect-error
     expect(wrapper.vm.comp.r).toEqual({ x: 'a' })
+    // @ts-expect-error
+    expect(wrapper.vm.item.r).toEqual({ x: 'a' })
 
     const VAL = { x: 'b' }
     r.x = 'b'
@@ -260,136 +235,15 @@ describe('define cache store', async () => {
 
     expect(wrapper.vm.itemR).toEqual(VAL)
     expect(wrapper.vm.r).toEqual(VAL)
-
     expect(wrapper.vm.itemRefsR).toEqual(VAL)
-    expect(wrapper.vm.refsR).toEqual(VAL)
     // @ts-expect-error
     expect(wrapper.vm.comp.r).toEqual(VAL)
-  })
-
-  it('autoMountAndUnMount = false & autoClearUnused = true', async () => {
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context) => {
-      return {}
-    }, { autoMountAndUnMount: false, autoClearUnused: true })
-
-    const App = {
-      setup() {
-        const cache = useTestCache()
-        cache.get(9)
-        return {
-          cache,
-        }
-      },
-      template: `something`,
-    }
-
-    const wrapper = mount(App, {})
-    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
-
-    expect(cache.getUseCount()).toBe(0)
-    expect(cache.ids()).toEqual([9])
-
-    cache.mount()
-    expect(cache.getUseCount()).toBe(1)
-    cache.unMount()
-    expect(cache.getUseCount()).toBe(0)
-    expect(cache.ids()).toEqual([])
-  })
-
-  it('autoMountAndUnMount = false & autoClearUnused = false', async () => {
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context) => {
-      return {}
-    }, { autoMountAndUnMount: false, autoClearUnused: false })
-
-    const App = {
-      setup() {
-        const cache = useTestCache()
-        cache.get(9)
-        return {
-          cache,
-        }
-      },
-      template: `something`,
-    }
-
-    const wrapper = mount(App, {})
-    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
-
-    expect(cache.getUseCount()).toBe(0)
-    expect(cache.ids()).toEqual([9])
-
-    cache.mount()
-    expect(cache.getUseCount()).toBe(1)
-    cache.unMount()
-    expect(cache.getUseCount()).toBe(0)
-    expect(cache.ids()).toEqual([9])
-  })
-
-  it('autoMountAndUnMount = true & autoClearUnused = false', async () => {
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context) => {
-      return {}
-    }, { autoMountAndUnMount: true, autoClearUnused: false })
-
-    const App = {
-      setup() {
-        const cache = useTestCache()
-        cache.get(9)
-        return {
-          cache,
-        }
-      },
-      template: `something`,
-    }
-
-    const wrapper = mount(App, {})
-    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
-
-    expect(cache.getUseCount()).toBe(1)
-    expect(cache.ids()).toEqual([9])
-
-    cache.mount()
-    expect(cache.getUseCount()).toBe(2)
-    cache.unMount()
-    expect(cache.getUseCount()).toBe(1)
-    cache.unMount()
-    expect(cache.getUseCount()).toBe(0)
-    expect(cache.ids()).toEqual([9])
-  })
-
-  it('autoMountAndUnMount = true & autoClearUnused = true', async () => {
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context) => {
-      return {}
-    }, { autoMountAndUnMount: true, autoClearUnused: true })
-
-    const App = {
-      setup() {
-        const cache = useTestCache()
-        cache.get(9)
-        return {
-          cache,
-        }
-      },
-      template: `something`,
-    }
-
-    const wrapper = mount(App, {})
-    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
-
-    expect(cache.getUseCount()).toBe(1)
-    expect(cache.ids()).toEqual([9])
-
-    cache.mount()
-    expect(cache.getUseCount()).toBe(2)
-    cache.unMount()
-    expect(cache.getUseCount()).toBe(1)
-    expect(cache.ids()).toEqual([9])
-    cache.unMount()
-    expect(cache.getUseCount()).toBe(0)
-    expect(cache.ids()).toEqual([])
+    // @ts-expect-error
+    expect(wrapper.vm.item.r).toEqual(VAL)
   })
 
   it('passing args', async () => {
-    const useTestCache = defineCacheStore((id: number, { get, remove }: Context, foo, bar) => {
+    const useTestCache = defineCacheStore((id, context, foo, bar) => {
       return {
         foo: computed(() => foo),
         bar: computed(() => bar),
@@ -421,9 +275,42 @@ describe('define cache store', async () => {
     expect(wrapper.vm.bar).toEqual('b')
   })
 
+  it('passing args with options', async () => {
+    const useTestCache = defineCacheStore((id, context, foo, bar) => {
+      return {
+        foo: computed(() => foo),
+        bar: computed(() => bar),
+      }
+    }, { autoMountAndUnMount: false, autoClearUnused: false })
+
+    const App = {
+      setup() {
+        const cache = useTestCache.withOptions({ autoMountAndUnMount: true, autoClearUnused: true }, 'f', 'b')
+
+        const { foo, bar } = cache.getRefs(99)
+
+        return {
+          cache,
+          foo,
+          bar,
+        }
+      },
+      template: `something`,
+    }
+
+    const wrapper = mount(App, {})
+    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
+
+    expect(cache.getUseCount()).toBe(1)
+    expect(cache.ids()).toEqual([99])
+
+    expect(wrapper.vm.foo).toEqual('f')
+    expect(wrapper.vm.bar).toEqual('b')
+  })
+
   it('only caches once', async () => {
     const count = ref(0)
-    const useTestCache = defineCacheStore((id: number) => {
+    const useTestCache = defineCacheStore((id) => {
       count.value++
       return {
         count: computed(() => count),
@@ -462,7 +349,7 @@ describe('define cache store', async () => {
       C: { name: 'Susan' },
     }
 
-    const useTestCache = defineCacheStore((id: string, { get, remove }: Context) => {
+    const useTestCache = defineCacheStore((id: string, { get }) => {
 
       return {
         id: computed(() => id),
@@ -531,7 +418,7 @@ describe('define cache store', async () => {
       },
     ])
 
-    const useTestCache = defineCacheStore((id: string, { get, remove }: Context) => {
+    const useTestCache = defineCacheStore((id: string, { get, remove }) => {
 
       watch(data, (newValue) => {
         const exists = newValue.find((item) => item.id === id)
@@ -574,14 +461,14 @@ describe('define cache store', async () => {
   })
 
   it('can use has() and getUseCount() internally', async () => {
-    const useTestCache = defineCacheStore((id: string, { has, getUseCount }: Context) => {
+    const useTestCache = defineCacheStore((id: string, { has, getUseCount }) => {
       return {
         id: computed(() => id),
         hasA: computed(() => has('A')),
         hasB: computed(() => has('B')),
         count: computed(() => getUseCount()),
       }
-    }, {autoMountAndUnMount: false, autoClearUnused: false })
+    }, { autoMountAndUnMount: false, autoClearUnused: false })
 
     const cache = useTestCache()
 
@@ -589,7 +476,7 @@ describe('define cache store', async () => {
       id: 'A',
       hasA: true,
       hasB: false,
-      count: 0
+      count: 0,
     })
 
     cache.mount()
@@ -598,7 +485,7 @@ describe('define cache store', async () => {
       id: 'B',
       hasA: true,
       hasB: true,
-      count: 1
+      count: 1,
     })
   })
 })

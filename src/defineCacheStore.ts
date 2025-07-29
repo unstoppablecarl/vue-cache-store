@@ -1,10 +1,15 @@
-import { computed, isReactive, isRef, type MaybeRefOrGetter, onUnmounted, reactive, toRaw, toRef } from 'vue'
+import { computed, isReactive, isRef, onUnmounted, type Reactive, reactive, toRaw, toRef, type ToRefs } from 'vue'
 
-export type Context = {
-  get(id: any): any;
+export interface Context<C extends (id: any, context: Context<C>, ...args: any[]) => ReturnType<C>> {
+  ids(): any[],
+  get(id: any): Reactive<ReturnType<C>>;
+  getRefs(id: any): ToRefs<Reactive<ReturnType<C>>>;
   has(id: any): boolean;
   remove(id: any): void;
   getUseCount(): number;
+  clear(): void;
+  mount(): void;
+  unMount(): void;
 }
 
 export type Options = {
@@ -19,8 +24,8 @@ const optionDefaults = {
   autoClearUnused: true,
 }
 
-export function defineCacheStore<C extends (id: any, context: Context, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
-  const cache = new Map<any, ReturnType<C>>()
+export function defineCacheStore<C extends (id: any, context: Context<C>, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
+  const cache = new Map<any, Reactive<ReturnType<C>>>()
   let count = 0
 
   function store(...args: any[]) {
@@ -34,28 +39,26 @@ export function defineCacheStore<C extends (id: any, context: Context, ...args: 
   return store
 
   function makeCacheStore(creatorFunction: C, options?: Options, ...args: any[]) {
+
     const cacheOptions = Object.assign(optionDefaults, options)
 
-    function get(id: any): ReturnType<C> {
+    function get(id: any): Reactive<ReturnType<C>> {
       let result = cache.get(id)
       if (result) {
         return result
       }
 
-      const context = {
-        get,
-        remove,
-        has,
-        getUseCount,
-      }
       const object = creatorFunction(id, context, ...args) as object
-      result = reactive(object) as ReturnType<C>
+      result = reactive(object) as Reactive<ReturnType<C>>
       cache.set(id, result)
 
       return result
     }
 
-    const getRefs = (id: any): any => reactiveToRefs(get(id) as object)
+    const getRefs = (id: any) => {
+      const obj = get(id) as Reactive<ReturnType<C>>
+      return reactiveToRefs(obj)
+    }
     const mount = () => count++
     const unMount = () => {
       count--
@@ -65,34 +68,29 @@ export function defineCacheStore<C extends (id: any, context: Context, ...args: 
         }
       }
     }
-    const remove = (id: any) => cache.delete(id)
-    const clear = () => cache.clear()
-    const has = (id: any) => cache.has(id)
-    const getUseCount = () => count
-
     if (cacheOptions.autoMountAndUnMount) {
       mount()
       onUnmounted(unMount)
     }
 
-    return {
+    const context: Context<C> = {
       ids: () => [...cache.keys()],
       get,
-      has,
-      getUseCount,
       getRefs,
-      remove,
-      clear,
+      has: (id: any) => cache.has(id),
+      getUseCount: () => count,
+      remove: (id: any) => cache.delete(id),
+      clear: () => cache.clear(),
       mount,
       unMount,
     }
+
+    return context
   }
 }
 
+// based on pinia storeToRefs()
 export function reactiveToRefs<T extends object>(obj: T) {
-  type Result<T> = {
-    [Property in keyof T]: MaybeRefOrGetter<T[Property]>
-  }
   const rawStore = toRaw(obj)
   const refs = {}
   for (const key in rawStore) {
@@ -115,5 +113,5 @@ export function reactiveToRefs<T extends object>(obj: T) {
         toRef(obj, key)
     }
   }
-  return refs as Result<T>
+  return refs as ToRefs<T>
 }
