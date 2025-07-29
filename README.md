@@ -6,7 +6,7 @@ When you need reusable non-trivial computed/reactive objects in multiple compone
 
 ## Installation
 
-`$ npm i pinia-cache-store`
+`$ npm i vue-cache-store`
 
 ## Usage
 
