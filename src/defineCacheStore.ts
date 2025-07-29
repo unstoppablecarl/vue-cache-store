@@ -19,57 +19,58 @@ const optionDefaults = {
   autoClearUnused: true,
 }
 
-export function defineCacheStore<C extends (id: any, context: Context, ...args: any[]) => ReturnType<C>>(creatorFunction: C, options?: Options) {
-  options = Object.assign(optionDefaults, options)
-
-  let instanceArgs: any[]
-
+export function defineCacheStore<C extends (id: any, context: Context, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
   const cache = new Map<any, ReturnType<C>>()
   let count = 0
 
-  function get(id: any): ReturnType<C> {
-    let result = cache.get(id)
-    if (result) {
+  function store(...args: any[]) {
+    return makeCacheStore(creatorFunction, defaultOptions, ...args)
+  }
+
+  store.withOptions = (options: Options, ...args: any[]) => {
+    return makeCacheStore(creatorFunction, options, ...args)
+  }
+
+  return store
+
+  function makeCacheStore(creatorFunction: C, options?: Options, ...args: any[]) {
+    const cacheOptions = Object.assign(optionDefaults, options)
+
+    function get(id: any): ReturnType<C> {
+      let result = cache.get(id)
+      if (result) {
+        return result
+      }
+
+      const context = {
+        get,
+        remove,
+        has,
+        getUseCount,
+      }
+      const object = creatorFunction(id, context, ...args) as object
+      result = reactive(object) as ReturnType<C>
+      cache.set(id, result)
+
       return result
     }
 
-    const context = {
-      get,
-      remove,
-      has,
-      getUseCount,
-    }
-    let object = creatorFunction(id, context, ...instanceArgs) as object
-    result = reactive(object) as ReturnType<C>
-    cache.set(id, result)
-
-    return result
-  }
-
-  const getRefs = (id: any): any => {
-    return reactiveToRefs(get(id) as object)
-  }
-
-  const mount = () => count++
-
-  const unMount = () => {
-    count--
-    if (options.autoClearUnused) {
-      if (count < 1) {
-        cache.clear()
+    const getRefs = (id: any): any => reactiveToRefs(get(id) as object)
+    const mount = () => count++
+    const unMount = () => {
+      count--
+      if (cacheOptions.autoClearUnused) {
+        if (count < 1) {
+          cache.clear()
+        }
       }
     }
-  }
+    const remove = (id: any) => cache.delete(id)
+    const clear = () => cache.clear()
+    const has = (id: any) => cache.has(id)
+    const getUseCount = () => count
 
-  const remove = (id: any) => cache.delete(id)
-  const clear = () => cache.clear()
-  const has = (id: any) => cache.has(id)
-  const getUseCount = () => count
-
-  return (...args: any[]) => {
-    instanceArgs = args
-
-    if (options.autoMountAndUnMount) {
+    if (cacheOptions.autoMountAndUnMount) {
       mount()
       onUnmounted(unMount)
     }
