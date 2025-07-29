@@ -1,2 +1,2 @@
-# vue-cache-store
-Cache and re-use computed/reactive properties
+# Vue Cache Store
+Cache and re-use computed/reactive properties in Vue

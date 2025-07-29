@@ -1,0 +1,78 @@
+{
+  "name": "vue-cache-store",
+  "type": "module",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.13.1",
+  "description": "Cache and re-use computed/reactive properties in vue",
+  "author": {
+    "name": "Carl Olsen",
+    "email": "unstoppablecarlolsen@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "vue"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist/*",
+    "types/*",
+    "pnpm-lock.yaml",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "test": "vitest --coverage",
+    "test:mutation": "stryker run"
+  },
+  "peerDependencies": {
+    "vue": "^3.2.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@pinia/testing": "^1.0.2",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@stryker-mutator/core": "^9.0.1",
+    "@stryker-mutator/typescript-checker": "^9.0.1",
+    "@stryker-mutator/vitest-runner": "^9.0.1",
+    "@types/node": "^24.0.10",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vue/devtools-api": "^7.7.7",
+    "@vue/test-utils": "^2.4.6",
+    "esbuild": "^0.23.0",
+    "happy-dom": "^18.0.1",
+    "pascalcase": "^2.0.0",
+    "rollup": "^4.20.0",
+    "rollup-plugin-delete": "^3.0.1",
+    "rollup-plugin-dts": "^6.1.1",
+    "rollup-plugin-esbuild": "^6.1.1",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "typescript": "^5.5.4",
+    "vitest": "^3.2.4",
+    "vue": "^3.5.17"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unstoppablecarl/vue-cache-store.git"
+  },
+  "bugs": {
+    "url": "https://github.com/unstoppablecarl/vue-cache-store/issues"
+  }
+}

@@ -1,0 +1,29 @@
+name: Test
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  Tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - name: Install Node Modules
+        run: pnpm install --frozen-lockfile
+      - name: Build the source code
+        run: pnpm run build
+      - name: Test the build output
+        run: pnpm run test
