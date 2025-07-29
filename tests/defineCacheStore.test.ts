@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type Context, defineCacheStore } from '../src'
+import { defineCacheStore } from '../src'
 import { mount } from '@vue/test-utils'
 import { computed, nextTick, reactive, ref, toValue, watch } from 'vue'
 

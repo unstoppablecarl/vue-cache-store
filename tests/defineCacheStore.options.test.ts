@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type CacheableStore, defineCacheStore } from '../src'
+import { type GenericCacheStoreFactory, defineCacheStore } from '../src'
 import { mount } from '@vue/test-utils'
 import type { Options } from '../types'
 
@@ -13,8 +13,8 @@ describe('define cache store options', async () => {
       autoClearUnused: true,
     })
 
-    const cache1 = wrapper1.vm.cache as CacheableStore
-    const cache2 = wrapper2.vm.cache as CacheableStore
+    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
+    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
 
     test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache1)
     test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache2)
@@ -27,8 +27,8 @@ describe('define cache store options', async () => {
       autoClearUnused: false,
     })
 
-    const cache1 = wrapper1.vm.cache as CacheableStore
-    const cache2 = wrapper2.vm.cache as CacheableStore
+    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
+    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
 
     test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache1)
     test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache2)
@@ -40,8 +40,8 @@ describe('define cache store options', async () => {
       autoClearUnused: false,
     })
 
-    const cache1 = wrapper1.vm.cache as CacheableStore
-    const cache2 = wrapper2.vm.cache as CacheableStore
+    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
+    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
 
     test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache1)
     test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache2)
@@ -53,8 +53,8 @@ describe('define cache store options', async () => {
       autoClearUnused: true,
     })
 
-    const cache1 = wrapper1.vm.cache as CacheableStore
-    const cache2 = wrapper2.vm.cache as CacheableStore
+    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
+    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
     test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache1)
     test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache2)
   })
@@ -163,7 +163,7 @@ function makeOptionsTestCases(options: Options) {
   ]
 }
 
-function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache: CacheableStore) {
+function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache: GenericCacheStoreFactory) {
   expect(cache.getUseCount()).toBe(0)
   expect(cache.ids()).toEqual([ID])
 
@@ -174,7 +174,7 @@ function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache: Ca
   expect(cache.ids()).toEqual([])
 }
 
-function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache: CacheableStore) {
+function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache: GenericCacheStoreFactory) {
   expect(cache.getUseCount()).toBe(0)
   expect(cache.ids()).toEqual([ID])
 
@@ -185,7 +185,7 @@ function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache: C
   expect(cache.ids()).toEqual([ID])
 }
 
-function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache: CacheableStore) {
+function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache: GenericCacheStoreFactory) {
   expect(cache.getUseCount()).toBe(1)
   expect(cache.ids()).toEqual([ID])
 
@@ -198,7 +198,7 @@ function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache: Ca
   expect(cache.ids()).toEqual([ID])
 }
 
-function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache: CacheableStore) {
+function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache: GenericCacheStoreFactory) {
   expect(cache.getUseCount()).toBe(1)
   expect(cache.ids()).toEqual([ID])
 

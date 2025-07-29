@@ -1,14 +1,33 @@
 import { computed, isReactive, isRef, onUnmounted, type Reactive, reactive, toRaw, toRef, type ToRefs } from 'vue'
 
-export interface Context<C extends (id: any, context: Context<C>, ...args: any[]) => ReturnType<C>> {
+export interface CacheStore<C extends (id: any, context: CacheStore<C>, ...args: any[]) => ReturnType<C>> {
+  // get cached ids
   ids(): any[],
+
+  // get reactive object
   get(id: any): Reactive<ReturnType<C>>;
+
+  // get refs wrapped object like pinia's storeToRefs(useMyStore())
   getRefs(id: any): ToRefs<Reactive<ReturnType<C>>>;
+
+  // check if id is cached
   has(id: any): boolean;
+
+  // remove cached id
   remove(id: any): void;
+
+  // get number of mounted components using this cache store
   getUseCount(): number;
+
+  // clear all cache ids
   clear(): void;
+
+  // increase use count by 1
   mount(): void;
+
+  // decrease use count by 1
+  // and clear if count is 0
+  // and autoClearUnused option is true
   unMount(): void;
 }
 
@@ -17,14 +36,18 @@ export type Options = {
   autoClearUnused?: boolean;
 }
 
-export type CacheableStore = ReturnType<ReturnType<typeof defineCacheStore>>
+export type GenericCacheStoreFactory = ReturnType<ReturnType<typeof defineCacheStore>>
+
+export type CacheStoreFactory<C extends (id: any, context: CacheStore<C>, ...args: any[]) => ReturnType<C>> = {
+  (creatorFunction: C, defaultOptions?: Options): CacheStore<C>;
+}
 
 const optionDefaults = {
   autoMountAndUnMount: true,
   autoClearUnused: true,
 }
 
-export function defineCacheStore<C extends (id: any, context: Context<C>, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
+export function defineCacheStore<C extends (id: any, context: CacheStore<C>, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
   const cache = new Map<any, Reactive<ReturnType<C>>>()
   let count = 0
 
@@ -38,7 +61,7 @@ export function defineCacheStore<C extends (id: any, context: Context<C>, ...arg
 
   return store
 
-  function makeCacheStore(creatorFunction: C, options?: Options, ...args: any[]) {
+  function makeCacheStore(creatorFunction: C, options?: Options, ...args: any[]): CacheStore<C> {
 
     const cacheOptions = Object.assign(optionDefaults, options)
 
@@ -73,7 +96,7 @@ export function defineCacheStore<C extends (id: any, context: Context<C>, ...arg
       onUnmounted(unMount)
     }
 
-    const context: Context<C> = {
+    const context: CacheStore<C> = {
       ids: () => [...cache.keys()],
       get,
       getRefs,

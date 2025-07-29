@@ -1,1 +1,1 @@
-export { defineCacheStore, type Options, type Context, type CacheableStore } from './defineCacheStore'
+export { defineCacheStore, type Options, type CacheStore, type CacheStoreFactory, type GenericCacheStoreFactory } from './defineCacheStore'
