@@ -48,8 +48,11 @@ export function defineRecordStore<
       }
     })
 
-    const record = getRecord(id) as REC
-    return create(record, context)
+    const record = getRecord(id)
+    if (!record) {
+      throw new Error(`defineRecordStore(): Record id "${id}" not found.`)
+    }
+    return create(record as REC, context)
   }
 
   const options = optionsHelper.merge(defaultOptions)

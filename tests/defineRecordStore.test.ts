@@ -89,10 +89,13 @@ async function test_store(store: ExtendedPeopleStore) {
   await nextTick()
 
   expect(store.getPerson(id)).toEqual(undefined)
+
   expect(store.peopleInfo.ids()).toEqual([id2])
   expect(store.peopleInfo.has(id)).toEqual(false)
 
   expect(store.getPerson(id2)).toEqual({ id: id2, name: 'jennifer' })
   expect(store.getInfo(id2)).toEqual({ id: id2, name: 'jennifer', nameLength: 8 })
   expect(store.peopleInfo.has(id2)).toEqual(true)
+
+  expect(() => store.getInfo(id)).toThrowError(`defineRecordStore(): Record id "${id}" not found.`)
 }
