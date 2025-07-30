@@ -37,7 +37,7 @@ export type Options = {
 
 export type GenericCacheStoreFactory = ReturnType<ReturnType<typeof defineCacheStore>>
 
-export type CacheStoreFactory<C extends (id: any, context: CacheStore<C>, ...args: any[]) => ReturnType<C>> = {
+export type CacheStoreFactory<C extends (id: any, context: CacheStore<C>) => ReturnType<C>> = {
   (creatorFunction: C, defaultOptions?: Options): CacheStore<ReturnType<C>>;
 }
 
@@ -46,23 +46,23 @@ const optionDefaults = {
   autoClearUnused: true,
 }
 
-export function defineCacheStore<C extends (id: any, context: CacheStore<ReturnType<C>>, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
+export function defineCacheStore<C extends (id: any, context: CacheStore<ReturnType<C>>) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
   type CacheStoreResult = CacheStore<ReturnType<C>>
 
   const cache = new Map<any, Reactive<ReturnType<C>>>()
   let count = 0
 
-  function store(...args: any[]) {
-    return makeCacheStore(creatorFunction, defaultOptions, ...args)
+  function store() {
+    return makeCacheStore(creatorFunction, defaultOptions)
   }
 
-  store.withOptions = (options: Options, ...args: any[]) => {
-    return makeCacheStore(creatorFunction, options, ...args)
+  store.withOptions = (options: Options) => {
+    return makeCacheStore(creatorFunction, options)
   }
 
   return store
 
-  function makeCacheStore(creatorFunction: C, options?: Options, ...args: any[]): CacheStoreResult {
+  function makeCacheStore(creatorFunction: C, options?: Options): CacheStoreResult {
 
     const cacheOptions = Object.assign(optionDefaults, options)
 
@@ -72,7 +72,7 @@ export function defineCacheStore<C extends (id: any, context: CacheStore<ReturnT
         return result
       }
 
-      const object = creatorFunction(id, context, ...args) as object
+      const object = creatorFunction(id, context) as object
       result = reactive(object) as Reactive<ReturnType<C>>
       cache.set(id, result)
 
