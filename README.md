@@ -139,16 +139,30 @@ export const usePersonCache = defineCacheStore((id, context: CacheStore) => {
 
 When defining a cache store the second argument is a default options object.
 
-| option                | default | description                                                                                      |
-|:----------------------|:--------|:-------------------------------------------------------------------------------------------------|
-| `autoMountAndUnMount` | `true`  | If true, automatically tracks the number of mounted components using the cache store             |
-| `autoClearUnused`     | `true`  | If true, when there are no longer any mounted components using a cache store it will be cleared. |
+| option                | description                                                                                      |
+|:----------------------|:-------------------------------------------------------------------------------------------------|
+| `autoMountAndUnMount` | If true, automatically tracks the number of mounted components using the cache store             |
+| `autoClearUnused`     | If true, when there are no longer any mounted components using a cache store it will be cleared. |
+
+
 
 ```ts
 // person-cache.ts
 import { defineCacheStore } from 'vue-cache-store'
 
-// defining a cache store with default options
+// defineCacheStore() global default values
+// {
+//   autoMountAndUnMount: true,
+//   autoClearUnused: true,
+// }
+
+// set new global defaults for all stores created with defineCacheStore()
+defineCacheStore.setGlobalDefaultOptions({
+  autoMountAndUnMount: false,
+  autoClearUnused: false,
+})
+
+// defining a cache store with store default options overriding global defaults
 export const usePersonCache = defineCacheStore((id) => {
   return {
     // ...
@@ -159,12 +173,90 @@ export const usePersonCache = defineCacheStore((id) => {
 })
 
 // inside a component
-// overrides default options
-const personCache = usePersonCache.withOptions({
+// overrides usePersonCache default options and defineCacheStore global defaults
+const personCache = usePersonCache({
   autoMountAndUnMount: true,
   autoClearUnused: false,
 })
 ```
+
+### Define a Record Store
+Designed to cache a store based on a record object.
+
+```ts
+// person-info.ts
+import { computed, ref } from 'vue'
+import { defineRecordStore } from 'vue-cache-store'
+
+// minimal example
+type Person = {
+  id: number,
+  name: string,
+}
+
+const people = ref<Person[]>([{
+  id: 99,
+  name: 'Jim'
+}])
+
+const getPerson = (id: number) => people.value.find(person => person.id === id)
+const removePerson = (id: number) => {
+  const index = people.value.findIndex(person => person.id === id)
+  if (index > -1) {
+    people.value.splice(index, 1)
+  }
+}
+
+const usePersonInfo = defineRecordStore({
+  getRecord(id: number) {
+    // return value is watched
+    // if the return value becomes falsy
+    // the cached object is removed automatically
+    return getPerson(id)
+  },
+  create(record: Person) {
+    // return value of this function is cached
+    // even if used by multiple components
+    // it will not be called repeatedly
+    const { id: personId, name } = toRefs(record)
+
+    return {
+      id: personId,
+      name,
+      nameLength: computed(() => record.name.length || 0),
+    }
+  },
+})
+
+const personInfo = usePersonInfo()
+
+const person = personInfo.get(99)
+person.name // 'Jim'
+person.nameLength // 3
+
+person.name = 'Jess'
+person.name // 'Jess'
+person.nameLength // 4
+
+// dereference reactive to refs
+const { name } = personInfo.getRefs(99)
+name.value // 'Jess'
+name.value = 'Ricky'
+name.value // 'Ricky'
+
+const samePerson = getPerson(99) as Person
+samePerson.name // 'Ricky'
+
+// source record is removed
+removePerson(99)
+people.value // []
+
+await nextTick()
+personInfo.has(99) // false
+personInfo.ids() // []
+```
+
+
 ### API
 
 #### `reactiveToRefs()`

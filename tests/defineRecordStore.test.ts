@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defineRecordStore, makeRecordStore } from '../src'
 import { createPinia, defineStore, setActivePinia, type StoreDefinition } from 'pinia'
-import { computed, nextTick, toRefs } from 'vue'
+import { computed, nextTick, ref, toRefs } from 'vue'
 import { type ExtendedPeopleStore, type Person, usePeople } from './helpers/people'
 
 describe('pinia integration', async () => {
@@ -13,6 +13,72 @@ describe('pinia integration', async () => {
       autoMountAndUnMount: false,
       autoClearUnused: false,
     })
+  })
+
+  it('test readme example', async () => {
+    type Person = {
+      id: number,
+      name: string,
+    }
+    const people = ref<Person[]>([{
+      id: 99,
+      name: 'Jim',
+    }])
+
+    const getPerson = (id: number) => people.value.find(person => person.id === id)
+
+    const removePerson = (id: number) => {
+      const index = people.value.findIndex(person => person.id === id)
+      if (index > -1) {
+        people.value.splice(index, 1)
+      }
+    }
+
+    const usePersonInfo = defineRecordStore({
+      getRecord(id: number) {
+        // return value is watched
+        // if the return value changes to falsy
+        // the cached object is removed automatically
+        return getPerson(id)
+      },
+      create(record: Person) {
+        const { id: personId, name } = toRefs(record)
+
+        return {
+          id: personId,
+          name,
+          nameLength: computed(() => record.name.length || 0),
+        }
+      },
+    })
+
+    const personInfo = usePersonInfo()
+
+    const person = personInfo.get(99)
+
+    expect(person.name).toBe('Jim')
+    expect(person.nameLength).toBe(3)
+
+    person.name = 'Jess'
+
+    expect(person.name).toBe('Jess')
+    expect(person.nameLength).toBe(4)
+
+    const { name } = personInfo.getRefs(99)
+    expect(name.value).toBe('Jess')
+
+    name.value = 'Ricky'
+    expect(name.value).toBe('Ricky')
+
+    const samePerson = getPerson(99) as Person
+    expect(samePerson.name).toBe('Ricky')
+
+    removePerson(99)
+    expect(people.value).toEqual([])
+
+    await nextTick()
+    expect(personInfo.has(99)).toBe(false)
+    expect(personInfo.ids()).toEqual([])
   })
 
   it('cache record store inside of store', async () => {
