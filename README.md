@@ -166,34 +166,6 @@ const personCache = usePersonCache.withOptions({
 })
 ```
 
-### Cache Store Additional Arguments
-
-A cache store can accept extra arguments if needed.
-
-```ts
-// person-cache.ts
-import { defineCacheStore } from 'vue-cache-store'
-
-// defining a cache store with default options
-export const usePersonCache = defineCacheStore((id, context, myArg1, myArg2) => {
-  console.log(myArg1) // 'example-arg-value'
-  console.log(myArg2) // 999
-
-  return {
-    // ...
-  }
-})
-
-// inside a component
-const personCache1 = usePersonCache('example-arg-value', 999)
-
-// when using withOptions()
-const personCache2 = usePersonCache.withOptions({
-  autoMountAndUnMount: true,
-  autoClearUnused: false,
-}, 'example-arg-value', 999)
-```
-
 ### API
 
 #### `reactiveToRefs()`
