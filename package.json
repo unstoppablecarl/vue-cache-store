@@ -1,7 +1,7 @@
 {
   "name": "vue-cache-store",
   "type": "module",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "packageManager": "pnpm@10.13.1",
   "description": "Cache and re-use computed/reactive properties in vue",
   "author": {
@@ -59,6 +59,7 @@
     "esbuild": "^0.23.0",
     "happy-dom": "^18.0.1",
     "pascalcase": "^2.0.0",
+    "pinia": "^3.0.3",
     "rollup": "^4.20.0",
     "rollup-plugin-delete": "^3.0.1",
     "rollup-plugin-dts": "^6.1.1",

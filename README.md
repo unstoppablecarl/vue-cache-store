@@ -64,37 +64,48 @@ export const usePersonCache = defineCacheStore((id) => {
 </template>
 ```
 ### Cache Store API
+
 ```ts
-import { defineCacheStore } from 'pinia-cache-store'
 // person-cache.ts
-export const usePersonCache = defineCacheStore((id) => {
+import { defineCacheStore } from 'pinia-cache-store'
+import { type ToRefs, type Reactive} from 'vue'
+
+export const usePersonCache = defineCacheStore((id: number): Item => {
   return {
+    id,
+    name: 'sue',
     // ...
   }
 })
 
+type Item = {
+  id: number,
+  name: string,
+  //...
+}
+
 // equivalent interface (not actual)
-interface CacheStore {
+type CacheStore = {
   // get cached ids
   ids(): any[],
   // get reactive object
-  get(id: any): Reactive<ReturnType<typeof creatorFunction>>;
+  get(id: any): Reactive<Item>,
   // get refs wrapped object like pinia's storeToRefs(useMyStore())
-  getRefs(id: any): ToRefs<Reactive<ReturnType<typeof creatorFunction>>>;
+  getRefs(id: any): ToRefs<Item>,
   // check if id is cached
-  has(id: any): boolean;
+  has(id: any): boolean,
   // remove cached id
-  remove(id: any): void;
+  remove(id: any): void,
   // get number of mounted components using this cache store
-  getUseCount(): number;
+  getUseCount(): number,
   // clear all cache ids
-  clear(): void;
+  clear(): void,
   // increase use count by 1
-  mount(): void;
+  mount(): void,
   // decrease use count by 1 
   // and clear if count is 0
   // and autoClearUnused option is true
-  unMount(): void;
+  unMount(): void,
 }
 const cache: CacheStore = usePersonCache()
 ```

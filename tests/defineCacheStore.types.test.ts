@@ -1,29 +1,32 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { type CacheStore, defineCacheStore, type CacheStoreFactory, type GenericCacheStoreFactory } from '../src'
+import { type CacheStore, type CacheStoreFactory, defineCacheStore } from '../src'
 import type { Reactive, ToRefs } from 'vue'
+
+type Item = {
+  id: number,
+  name: string,
+}
 
 describe('defineCacheStore() types', async () => {
   it('check readme type explanation is accurate', async () => {
-    interface CustomCacheStore {
+    type CustomCacheStore = {
       ids(): any[],
-      get(id: any): Reactive<ReturnType<typeof creatorFunction>>;
-      getRefs(id: any): ToRefs<Reactive<ReturnType<typeof creatorFunction>>>;
-      has(id: any): boolean;
-      remove(id: any): void;
-      getUseCount(): number;
-      clear(): void;
-      mount(): void;
-      unMount(): void;
+      get(id: any): Reactive<Item>,
+      getRefs(id: any): ToRefs<Reactive<Item>>,
+      has(id: any): boolean,
+      remove(id: any): void,
+      getUseCount(): number,
+      clear(): void,
+      mount(): void,
+      unMount(): void,
     }
 
-    function creatorFunction(id: number, context: CacheStore<typeof creatorFunction>) {
+    const useTestCache = defineCacheStore((id: number, context: CacheStore<Item>): Item => {
       return {
         id,
         name: 'susan',
       }
-    }
-
-    const useTestCache = defineCacheStore(creatorFunction, { autoMountAndUnMount: false })
+    }, { autoMountAndUnMount: false })
 
     const cache: CustomCacheStore = useTestCache()
 
@@ -48,9 +51,9 @@ describe('defineCacheStore() types', async () => {
   it('type CacheStore', () => {
     let called = 0
 
-    function creatorFunction(id: number, context: CacheStore<typeof creatorFunction>) {
+    function creatorFunction(id: number, context: CacheStore<Item>) {
       called++
-      expectTypeOf(context).toEqualTypeOf<CacheStore<typeof creatorFunction>>()
+      expectTypeOf(context).toEqualTypeOf<CacheStore<Item>>()
       return {
         id,
         name: 'susan',
@@ -61,9 +64,9 @@ describe('defineCacheStore() types', async () => {
 
     const cache = useTestCache()
 
-    expectTypeOf(cache).toEqualTypeOf<CacheStore<typeof creatorFunction>>()
+    expectTypeOf(cache).toEqualTypeOf<CacheStore<Item>>()
 
-    cache.get(99)
+    cache.get('asd')
     expect(called).toEqual(1)
   })
 })

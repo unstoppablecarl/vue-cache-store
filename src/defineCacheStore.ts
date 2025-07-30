@@ -1,14 +1,13 @@
 import { computed, isReactive, isRef, onUnmounted, type Reactive, reactive, toRaw, toRef, type ToRefs } from 'vue'
-
-export interface CacheStore<C extends (id: any, context: CacheStore<C>, ...args: any[]) => ReturnType<C>> {
+export interface CacheStore<T> {
   // get cached ids
   ids(): any[],
 
   // get reactive object
-  get(id: any): Reactive<ReturnType<C>>;
+  get(id: any): Reactive<T>;
 
   // get refs wrapped object like pinia's storeToRefs(useMyStore())
-  getRefs(id: any): ToRefs<Reactive<ReturnType<C>>>;
+  getRefs(id: any): ToRefs<Reactive<T>>;
 
   // check if id is cached
   has(id: any): boolean;
@@ -39,7 +38,7 @@ export type Options = {
 export type GenericCacheStoreFactory = ReturnType<ReturnType<typeof defineCacheStore>>
 
 export type CacheStoreFactory<C extends (id: any, context: CacheStore<C>, ...args: any[]) => ReturnType<C>> = {
-  (creatorFunction: C, defaultOptions?: Options): CacheStore<C>;
+  (creatorFunction: C, defaultOptions?: Options): CacheStore<ReturnType<C>>;
 }
 
 const optionDefaults = {
@@ -47,7 +46,9 @@ const optionDefaults = {
   autoClearUnused: true,
 }
 
-export function defineCacheStore<C extends (id: any, context: CacheStore<C>, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
+export function defineCacheStore<C extends (id: any, context: CacheStore<ReturnType<C>>, ...args: any[]) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
+  type CacheStoreResult = CacheStore<ReturnType<C>>
+
   const cache = new Map<any, Reactive<ReturnType<C>>>()
   let count = 0
 
@@ -61,7 +62,7 @@ export function defineCacheStore<C extends (id: any, context: CacheStore<C>, ...
 
   return store
 
-  function makeCacheStore(creatorFunction: C, options?: Options, ...args: any[]): CacheStore<C> {
+  function makeCacheStore(creatorFunction: C, options?: Options, ...args: any[]): CacheStoreResult {
 
     const cacheOptions = Object.assign(optionDefaults, options)
 
@@ -96,7 +97,7 @@ export function defineCacheStore<C extends (id: any, context: CacheStore<C>, ...
       onUnmounted(unMount)
     }
 
-    const context: CacheStore<C> = {
+    const context: CacheStoreResult = {
       ids: () => [...cache.keys()],
       get,
       getRefs,
