@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defineCacheStore } from '../src'
 import { mount } from '@vue/test-utils'
-import { computed, nextTick, reactive, ref, toValue, watch } from 'vue'
+import { computed, nextTick, reactive, ref, toRef, toValue, watch } from 'vue'
 
 describe('define cache store', async () => {
 
@@ -36,7 +36,6 @@ describe('define cache store', async () => {
           x,
           id,
           itemRefsX: itemRefs.x,
-          compID: comp.value.id,
           itemRefsID: itemRefs.id,
           setX,
 
@@ -240,6 +239,140 @@ describe('define cache store', async () => {
     expect(wrapper.vm.comp.r).toEqual(VAL)
     // @ts-expect-error
     expect(wrapper.vm.item.r).toEqual(VAL)
+  })
+
+  it('prop driven cache id', async () => {
+
+    type Item = {
+      id: string,
+      name: string,
+    }
+
+    const data = ref<Item[]>([
+      {
+        id: 'A',
+        name: 'Jim',
+      },
+      {
+        id: 'B',
+        name: 'Lisa',
+      },
+    ])
+
+    function findItem(id: string) {
+      return data.value.find((item) => item.id === id) as Item
+    }
+
+    const useTestCache = defineCacheStore((id) => {
+      const item = findItem(id) as Item
+      return {
+        id: ref(id),
+        name: toRef(item, 'name'),
+      }
+    })
+
+    const App = {
+      props: {
+        cacheId: String,
+      },
+      setup(props: { cacheId: Number }) {
+        const cacheId = computed(() => props.cacheId)
+
+        const cache = useTestCache()
+        const comp = computed(() => cache.get(cacheId.value))
+        const compRefs = computed(() => cache.getRefs(cacheId.value))
+        const name = computed({
+          get: () => {
+            const item = cache.get(cacheId.value)
+            return item.name
+          },
+          set: (value: string) => {
+            const item = cache.get(cacheId.value)
+            item.name = value
+          },
+        })
+        const id = computed(() => {
+          const { id } = cache.getRefs(cacheId.value)
+          return id
+        })
+
+        function setName(v: any) {
+          const item = cache.get(cacheId.value)
+          item.name = v
+        }
+
+        return {
+          comp,
+          compRefs,
+          name,
+          id,
+          setName,
+          cache,
+        }
+      },
+      template: `something`,
+    }
+
+    const ID = 'A'
+
+    const wrapper = mount(App, {
+      props: {
+        cacheId: ID,
+      },
+    })
+
+    testState('Jim', ID)
+
+    // set via function
+    const newName = 'Jimmy'
+    // @ts-expect-error
+    wrapper.vm.setName(newName)
+    await wrapper.vm.$nextTick()
+    testState(newName, ID)
+
+    // set via computed refs
+    const newName2 = 'bob'
+    // @ts-expect-error
+    wrapper.vm.compRefs.name.value = newName2
+    await wrapper.vm.$nextTick()
+    testState(newName2, ID)
+
+    // set via computed destructured ref
+    const newName3 = 'ryan'
+    // @ts-expect-error
+    wrapper.vm.name = newName3
+    await wrapper.vm.$nextTick()
+    testState(newName3, ID)
+
+    // set via computed raw
+    const newName4 = 'jessica'
+    // @ts-expect-error
+    wrapper.vm.comp.name = newName4
+    await wrapper.vm.$nextTick()
+    testState(newName4, ID)
+
+    const ID2 = 'B'
+    wrapper.setProps({ cacheId: ID2 })
+    await wrapper.vm.$nextTick()
+    testState('Lisa', ID2)
+
+    function testState(name: string, id: string) {
+      expect(wrapper.vm.cacheId).toBe(id)
+      // @ts-expect-error
+      expect(wrapper.vm.comp.value).toBe(undefined)
+      // @ts-expect-error
+      expect(wrapper.vm.comp.id).toBe(id)
+      // @ts-expect-error
+      expect(wrapper.vm.comp.name).toBe(name)
+      // @ts-expect-error
+      expect(wrapper.vm.id.value).toBe(id)
+      expect(wrapper.vm.name).toBe(name)
+      expect(findItem(id)).toEqual({ id, name })
+      // @ts-expect-error
+      expect(wrapper.vm.compRefs.id.value).toBe(id)
+      // @ts-expect-error
+      expect(wrapper.vm.compRefs.name.value).toBe(name)
+    }
   })
 
   it('only caches once', async () => {
