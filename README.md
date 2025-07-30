@@ -15,7 +15,7 @@ Cache stores are designed to behave similar to [Pinia](https://pinia.vuejs.org/)
 The value returned by `usePersonCache()` can be used similar to Pinia.
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'pinia-cache-store'
+import { defineCacheStore } from 'vue-cache-store'
 import { computed } from 'vue'
 // example service
 import { getRecordInfo } from 'record-info-getter'
@@ -67,7 +67,7 @@ export const usePersonCache = defineCacheStore((id) => {
 
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'pinia-cache-store'
+import { defineCacheStore } from 'vue-cache-store'
 import { type ToRefs, type Reactive} from 'vue'
 
 export const usePersonCache = defineCacheStore((id: number): Item => {
@@ -115,7 +115,7 @@ The `context` argument is the current cache store instance.
 
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'pinia-cache-store'
+import { defineCacheStore } from 'vue-cache-store'
 import { getRecordInfo } from 'record-info-getter'
 import { computed } from 'vue'
 
@@ -146,7 +146,7 @@ When defining a cache store the second argument is a default options object.
 
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'pinia-cache-store'
+import { defineCacheStore } from 'vue-cache-store'
 
 // defining a cache store with default options
 export const usePersonCache = defineCacheStore((id) => {
@@ -172,7 +172,7 @@ A cache store can accept extra arguments if needed.
 
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'pinia-cache-store'
+import { defineCacheStore } from 'vue-cache-store'
 
 // defining a cache store with default options
 export const usePersonCache = defineCacheStore((id, context, myArg1, myArg2) => {
@@ -192,6 +192,20 @@ const personCache2 = usePersonCache.withOptions({
   autoMountAndUnMount: true,
   autoClearUnused: false,
 }, 'example-arg-value', 999)
+```
+
+### API
+
+#### `reactiveToRefs()`
+Used internally by the package but is very useful.
+It is the same as pinia's `storeToRefs()` function,
+but it allows the argument to be any object.
+```ts
+import { reactiveToRefs } from 'vue-cache-store'
+import { reactive } from 'vue'
+
+const item = reactive({foo: 'bar'})
+const { foo } = reactiveToRefs(item)
 ```
 
 ## Building
