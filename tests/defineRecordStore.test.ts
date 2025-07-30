@@ -60,7 +60,6 @@ describe('pinia integration', async () => {
     await test_store(store)
 
   })
-
 })
 
 async function test_store(store: ExtendedPeopleStore) {
