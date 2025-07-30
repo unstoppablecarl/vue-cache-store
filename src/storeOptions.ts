@@ -9,18 +9,20 @@ export type Options = {
 }
 
 export function makeOptionsHelper(globalDefaultOptions: RequiredOptions) {
-
-  const set = (options: Options) => Object.assign(globalDefaultOptions, options)
-  const get = () => globalDefaultOptions
+  const initialState = {
+    ...globalDefaultOptions,
+  }
+  const set = (options: Options): void => {
+    Object.assign(globalDefaultOptions, options)
+  }
+  const get = (): RequiredOptions => globalDefaultOptions
+  const reset = (): void => set(initialState)
 
   return {
     set,
     get,
-    attach(obj: any) {
-      obj.setGlobalDefaultOptions = set
-      obj.getGlobalDefaultOptions = get
-    },
-    merge(storeDefaultOptions?: Options, options?: Options) {
+    reset,
+    merge: (storeDefaultOptions ?: Options, options ?: Options) => {
       return {
         ...globalDefaultOptions,
         ...storeDefaultOptions,

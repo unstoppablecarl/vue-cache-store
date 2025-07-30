@@ -1,7 +1,6 @@
 import { watchEffect } from 'vue'
-import { defineCacheStore } from './defineCacheStore'
+import { type CacheStore, defineCacheStore } from './defineCacheStore'
 import { makeOptionsHelper, type Options } from './storeOptions'
-import type { CacheStore } from '../types'
 
 export type RecordStoreDefinition<C, G> = {
   create: C,
@@ -21,8 +20,17 @@ export function makeRecordStore<
   return defineRecordStore<C, G, REC>({ create, getRecord, defaultOptions })()
 }
 
+const optionsHelper = makeOptionsHelper({
+  autoMountAndUnMount: true,
+  autoClearUnused: true,
+})
+
+defineRecordStore.setGlobalDefaultOptions = optionsHelper.set
+defineRecordStore.getGlobalDefaultOptions = optionsHelper.get
+defineRecordStore.resetGlobalDefaultOptions = optionsHelper.reset
+
 export function defineRecordStore<
-  C extends (record: REC, context: CacheStore<ReturnType<C>>, ...args: any[]) => ReturnType<C>,
+  C extends (record: REC, context: CacheStore<ReturnType<C>>) => ReturnType<C>,
   G extends (id: any) => ReturnType<G>,
   REC = object & ReturnType<G>,
 >
@@ -52,10 +60,3 @@ export function defineRecordStore<
 
   return defineCacheStore(creatorFunction, options)
 }
-
-const optionsHelper = makeOptionsHelper({
-  autoMountAndUnMount: false,
-  autoClearUnused: false,
-})
-
-optionsHelper.attach(defineRecordStore)

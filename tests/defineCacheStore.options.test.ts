@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { defineCacheStore, type GenericCacheStoreFactory } from '../src'
+import { describe, expect, it, onTestFailed } from 'vitest'
 import { mount } from '@vue/test-utils'
-import type { Options } from '../types'
-import type { RequiredOptions } from '../types/storeOptions'
+import { defineCacheStore, type GenericCacheStore } from '../src'
+import type { Options, RequiredOptions } from '../src/storeOptions'
 
 const ID = 9
+
 
 describe('define cache store options', async () => {
 
@@ -12,116 +12,123 @@ describe('define cache store options', async () => {
 
   })
 
-  it('autoMountAndUnMount = false & autoClearUnused = true', async () => {
-    const [wrapper1, wrapper2] = makeOptionsTestCases({
-      autoMountAndUnMount: false,
-      autoClearUnused: true,
-    })
-
-    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
-    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
-
-    test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache1)
-    test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache2)
-  })
-
-  it('autoMountAndUnMount = false & autoClearUnused = false', async () => {
-
-    const [wrapper1, wrapper2] = makeOptionsTestCases({
-      autoMountAndUnMount: false,
-      autoClearUnused: false,
-    })
-
-    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
-    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
-
-    test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache1)
-    test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache2)
-  })
-
-  it('autoMountAndUnMount = true & autoClearUnused = false', async () => {
-    const [wrapper1, wrapper2] = makeOptionsTestCases({
-      autoMountAndUnMount: true,
-      autoClearUnused: false,
-    })
-
-    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
-    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
-
-    test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache1)
-    test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache2)
-  })
-
-  it('autoMountAndUnMount = true & autoClearUnused = true', async () => {
-    const [wrapper1, wrapper2] = makeOptionsTestCases({
-      autoMountAndUnMount: true,
-      autoClearUnused: true,
-    })
-
-    const cache1 = wrapper1.vm.cache as GenericCacheStoreFactory
-    const cache2 = wrapper2.vm.cache as GenericCacheStoreFactory
-    test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache1)
-    test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache2)
-  })
-
-
   const cases = [
     {
-      autoMountAndUnMount: true,
-      autoClearUnused: true,
+      options: {
+        autoMountAndUnMount: true,
+        autoClearUnused: true,
+      },
       testFunc: test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true,
     },
     {
-      autoMountAndUnMount: false,
-      autoClearUnused: true,
+      options: {
+        autoMountAndUnMount: false,
+        autoClearUnused: true,
+      },
       testFunc: test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true,
     },
     {
-      autoMountAndUnMount: false,
-      autoClearUnused: false,
+      options: {
+        autoMountAndUnMount: false,
+        autoClearUnused: false,
+      },
       testFunc: test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false,
     },
     {
-      autoMountAndUnMount: true,
-      autoClearUnused: false,
+      options: {
+        autoMountAndUnMount: true,
+        autoClearUnused: false,
+      },
       testFunc: test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false,
     },
   ]
 
   cases.forEach(({
-                   autoMountAndUnMount: defaultAutomountAndUnmount,
-                   autoClearUnused: defaultAutoClearUnused,
+                   options,
+                   testFunc,
                  }) => {
 
-    cases.forEach(({
-                     autoMountAndUnMount,
-                     autoClearUnused,
-                     testFunc,
-                   }) => {
+    const optionCases = permuteCase(options)
+
+    optionCases.forEach(([
+                           globalOptions,
+                           defaultOptions,
+                           directOptions,
+                         ]: [Options | undefined, Options | undefined, Options | undefined]) => {
+
+      const undefinedOptions = {
+        autoMountAndUnMount: undefined,
+        autoClearUnused: undefined,
+      }
+
+      const {
+        autoMountAndUnMount: globalAutomountAndUnmount,
+        autoClearUnused: globalAutoClearUnused,
+      } = globalOptions ?? undefinedOptions
+
+      const {
+        autoMountAndUnMount: defaultAutomountAndUnmount,
+        autoClearUnused: defaultAutoClearUnused,
+      } = defaultOptions ?? undefinedOptions
+
+      const {
+        autoMountAndUnMount: directAutomountAndUnmount,
+        autoClearUnused: directAutoClearUnused,
+      } = directOptions ?? undefinedOptions
+
+
+      const {
+        autoMountAndUnMount: expectedAutomountAndUnmount,
+        autoClearUnused: expectedAutoClearUnused,
+      } = options ?? undefinedOptions
+
+
       let testName = 'options override case: '
+      testName += `global: autoMountAndUnMount=${JSON.stringify(globalAutomountAndUnmount)},autoClearUnused=${JSON.stringify(globalAutoClearUnused)}`
       testName += `default: autoMountAndUnMount=${JSON.stringify(defaultAutomountAndUnmount)},autoClearUnused=${JSON.stringify(defaultAutoClearUnused)}`
-      testName += `override: autoMountAndUnMount=${JSON.stringify(autoMountAndUnMount)},autoClearUnused=${JSON.stringify(autoClearUnused)}`
+      testName += `override: autoMountAndUnMount=${JSON.stringify(directAutomountAndUnmount)},autoClearUnused=${JSON.stringify(directAutoClearUnused)}`
+      testName += `expected: autoMountAndUnMount=${JSON.stringify(expectedAutomountAndUnmount)},autoClearUnused=${JSON.stringify(expectedAutoClearUnused)}`
 
       it(testName, async () => {
 
-        const useTestCache = defineCacheStore((id) => {
-          return {}
-        }, {
-          autoMountAndUnMount: defaultAutomountAndUnmount,
-          autoClearUnused: defaultAutoClearUnused,
+        onTestFailed(() => {
+          console.log({
+            globalOptions,
+            defaultOptions,
+            directOptions,
+            expectedResultOptions: options,
+          })
         })
 
-        const component1 = makeComponentWithCacheOptions(useTestCache, {
-          autoMountAndUnMount,
-          autoClearUnused,
-        })
+        if (globalOptions) {
+          defineCacheStore.setGlobalDefaultOptions(globalOptions)
+        }
+        let useTestCache
+        if (defaultOptions) {
+          useTestCache = defineCacheStore((id) => {
+            return {}
+          }, defaultOptions)
+        } else {
+          useTestCache = defineCacheStore((id) => {
+            return {}
+          })
+        }
 
-        const wrapper = mount(component1)
+        let component
+
+        if (directOptions) {
+          component = makeComponentWithCacheOptions(useTestCache, directOptions)
+        } else {
+          component = makeComponentWithCache(useTestCache)
+        }
+
+        const wrapper = mount(component)
         testFunc(wrapper.vm.cache)
       })
     })
   })
 })
+
 
 function makeComponentWithCache(useTestCache: ReturnType<typeof defineCacheStore>) {
   return {
@@ -139,7 +146,7 @@ function makeComponentWithCache(useTestCache: ReturnType<typeof defineCacheStore
 function makeComponentWithCacheOptions(useTestCache: ReturnType<typeof defineCacheStore>, options: Options) {
   return {
     setup() {
-      const cache = useTestCache.withOptions(options)
+      const cache = useTestCache(options)
       cache.get(ID)
       return {
         cache,
@@ -149,93 +156,107 @@ function makeComponentWithCacheOptions(useTestCache: ReturnType<typeof defineCac
   }
 }
 
-function makeOptionsTestCases(options: Options) {
-  const useTestCache1 = defineCacheStore((id) => {
-    return {}
-  }, options)
 
-  const Component1 = makeComponentWithCache(useTestCache1)
+function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache: GenericCacheStore) {
+  expect(cache.getUseCount()).toBe(0)
+  expect(cache.ids()).toEqual([ID])
 
-  const useTestCache2 = defineCacheStore((id) => {
-    return {}
+  cache.mount()
+  expect(cache.getUseCount()).toBe(1)
+  cache.unMount()
+  expect(cache.getUseCount()).toBe(0)
+  expect(cache.ids()).toEqual([])
+}
+
+function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache: GenericCacheStore) {
+  expect(cache.getUseCount()).toBe(0)
+  expect(cache.ids()).toEqual([ID])
+
+  cache.mount()
+  expect(cache.getUseCount()).toBe(1)
+  cache.unMount()
+  expect(cache.getUseCount()).toBe(0)
+  expect(cache.ids()).toEqual([ID])
+}
+
+function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache: GenericCacheStore) {
+  expect(cache.getUseCount()).toBe(1)
+  expect(cache.ids()).toEqual([ID])
+
+  cache.mount()
+  expect(cache.getUseCount()).toBe(2)
+  cache.unMount()
+  expect(cache.getUseCount()).toBe(1)
+  cache.unMount()
+  expect(cache.getUseCount()).toBe(0)
+  expect(cache.ids()).toEqual([ID])
+}
+
+function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache: GenericCacheStore) {
+  expect(cache.getUseCount()).toBe(1)
+  expect(cache.ids()).toEqual([ID])
+
+  cache.mount()
+  expect(cache.getUseCount()).toBe(2)
+  cache.unMount()
+  expect(cache.getUseCount()).toBe(1)
+  expect(cache.ids()).toEqual([ID])
+  cache.unMount()
+  expect(cache.getUseCount()).toBe(0)
+  expect(cache.ids()).toEqual([])
+}
+
+function permuteCase(options: RequiredOptions) {
+  const p1 = permutation()
+  const p2 = permutation()
+  const p3 = permutation()
+
+  const cases: any[] = []
+  p1.forEach((c1) => {
+    p2.forEach((c2) => {
+      p3.forEach((c3) => {
+
+        const {
+          autoMountAndUnMount,
+          autoClearUnused,
+        } = Object.assign({}, c1, c2, c3)
+
+        if (autoMountAndUnMount === options.autoMountAndUnMount &&
+          autoClearUnused === options.autoClearUnused) {
+          cases.push([c1, c2, c3])
+        }
+      })
+    })
   })
-
-  const Component2 = makeComponentWithCacheOptions(useTestCache2, options)
-
-  return [
-    mount(Component1, {}),
-    mount(Component2, {}),
-  ]
+  return cases
 }
 
-function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_true(cache: GenericCacheStoreFactory) {
-  expect(cache.getUseCount()).toBe(0)
-  expect(cache.ids()).toEqual([ID])
-
-  cache.mount()
-  expect(cache.getUseCount()).toBe(1)
-  cache.unMount()
-  expect(cache.getUseCount()).toBe(0)
-  expect(cache.ids()).toEqual([])
-}
-
-function test_autoMountAndUnMount_is_false_AND_autoClearUnused_is_false(cache: GenericCacheStoreFactory) {
-  expect(cache.getUseCount()).toBe(0)
-  expect(cache.ids()).toEqual([ID])
-
-  cache.mount()
-  expect(cache.getUseCount()).toBe(1)
-  cache.unMount()
-  expect(cache.getUseCount()).toBe(0)
-  expect(cache.ids()).toEqual([ID])
-}
-
-function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_false(cache: GenericCacheStoreFactory) {
-  expect(cache.getUseCount()).toBe(1)
-  expect(cache.ids()).toEqual([ID])
-
-  cache.mount()
-  expect(cache.getUseCount()).toBe(2)
-  cache.unMount()
-  expect(cache.getUseCount()).toBe(1)
-  cache.unMount()
-  expect(cache.getUseCount()).toBe(0)
-  expect(cache.ids()).toEqual([ID])
-}
-
-function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache: GenericCacheStoreFactory) {
-  expect(cache.getUseCount()).toBe(1)
-  expect(cache.ids()).toEqual([ID])
-
-  cache.mount()
-  expect(cache.getUseCount()).toBe(2)
-  cache.unMount()
-  expect(cache.getUseCount()).toBe(1)
-  expect(cache.ids()).toEqual([ID])
-  cache.unMount()
-  expect(cache.getUseCount()).toBe(0)
-  expect(cache.ids()).toEqual([])
-}
-
-function permutation(options: RequiredOptions) {
+function permutation() {
 
   const values = [
-    undefined,
     true,
     false,
   ]
 
-  const result: Options[] = []
+  const result: (Options | undefined)[] = []
   values.forEach((value1) => {
+    result.push({
+      autoMountAndUnMount: value1,
+    })
+    result.push({
+      autoClearUnused: value1,
+    })
+
     values.forEach((value2) => {
       result.push({
         autoMountAndUnMount: value1,
         autoClearUnused: value2,
       })
+
     })
   })
 
-
+  result.push(undefined)
 
   return result
 }

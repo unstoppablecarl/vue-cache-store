@@ -1,4 +1,6 @@
-import { computed, isReactive, isRef, onUnmounted, type Reactive, reactive, toRaw, toRef, type ToRefs } from 'vue'
+import { onUnmounted, type Reactive, reactive, type ToRefs } from 'vue'
+import { makeOptionsHelper, type Options, type RequiredOptions } from './storeOptions'
+import { reactiveToRefs } from './reactiveToRefs'
 
 export interface CacheStore<T> {
   // get cached ids
@@ -31,41 +33,37 @@ export interface CacheStore<T> {
   unMount(): void;
 }
 
-export type Options = {
-  autoMountAndUnMount?: boolean;
-  autoClearUnused?: boolean;
+export type GenericCacheStoreFactory = ReturnType<typeof defineCacheStore>
+
+export type GenericCacheStore = ReturnType<ReturnType<typeof defineCacheStore>>
+
+export type CacheStoreFactory<C extends (id: any, context: CacheStore<ReturnType<C>>) => ReturnType<C>> = {
+  (options?: Options): CacheStore<ReturnType<C>>;
 }
 
-export type GenericCacheStoreFactory = ReturnType<ReturnType<typeof defineCacheStore>>
-
-export type CacheStoreFactory<C extends (id: any, context: CacheStore<C>) => ReturnType<C>> = {
-  (creatorFunction: C, defaultOptions?: Options): CacheStore<ReturnType<C>>;
-}
-
-const optionDefaults = {
+const optionsHelper = makeOptionsHelper({
   autoMountAndUnMount: true,
   autoClearUnused: true,
-}
+})
 
-export function defineCacheStore<C extends (id: any, context: CacheStore<ReturnType<C>>) => ReturnType<C>>(creatorFunction: C, defaultOptions?: Options) {
+defineCacheStore.setGlobalDefaultOptions = optionsHelper.set
+defineCacheStore.getGlobalDefaultOptions = optionsHelper.get
+defineCacheStore.resetGlobalDefaultOptions = optionsHelper.reset
+
+export function defineCacheStore<
+  C extends (id: any, context: CacheStore<ReturnType<C>>) => ReturnType<C>
+>(creatorFunction: C, defaultOptions?: Options) {
   type CacheStoreResult = CacheStore<ReturnType<C>>
 
   const cache = new Map<any, Reactive<ReturnType<C>>>()
   let count = 0
 
-  function store() {
-    return makeCacheStore(creatorFunction, defaultOptions)
+  return (options?: Options) => {
+    const merged = optionsHelper.merge(defaultOptions, options)
+    return makeCacheStore(creatorFunction, merged)
   }
 
-  store.withOptions = (options: Options) => {
-    return makeCacheStore(creatorFunction, options)
-  }
-
-  return store
-
-  function makeCacheStore(creatorFunction: C, options?: Options): CacheStoreResult {
-
-    const cacheOptions = Object.assign(optionDefaults, options)
+  function makeCacheStore(creatorFunction: C, options: RequiredOptions): CacheStoreResult {
 
     function get(id: any): Reactive<ReturnType<C>> {
       let result = cache.get(id)
@@ -87,13 +85,13 @@ export function defineCacheStore<C extends (id: any, context: CacheStore<ReturnT
     const mount = () => count++
     const unMount = () => {
       count--
-      if (cacheOptions.autoClearUnused) {
+      if (options.autoClearUnused) {
         if (count < 1) {
           cache.clear()
         }
       }
     }
-    if (cacheOptions.autoMountAndUnMount) {
+    if (options.autoMountAndUnMount) {
       mount()
       onUnmounted(unMount)
     }
@@ -112,31 +110,4 @@ export function defineCacheStore<C extends (id: any, context: CacheStore<ReturnT
 
     return context
   }
-}
-
-// based on pinia storeToRefs()
-export function reactiveToRefs<T extends object>(obj: T) {
-  const rawStore = toRaw(obj)
-  const refs = {}
-  for (const key in rawStore) {
-    const value = rawStore[key]
-    // There is no native method to check for a computed
-    // https://github.com/vuejs/core/pull/4165
-    // @ts-expect-error: too hard to type correctly
-    if (value.effect) {
-      // @ts-expect-error: too hard to type correctly
-      refs[key] = computed({
-        get: () => obj[key],
-        set(value) {
-          obj[key] = value
-        },
-      })
-    } else if (isRef(value) || isReactive(value)) {
-      // @ts-expect-error: the key is state or getter
-      refs[key] =
-        // ---
-        toRef(obj, key)
-    }
-  }
-  return refs as ToRefs<T>
 }
