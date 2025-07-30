@@ -1,4 +1,8 @@
 export {
-  defineCacheStore, type Options, type CacheStore, type CacheStoreFactory, type GenericCacheStoreFactory,
+  defineCacheStore,
+  type CacheStore,
+  type CacheStoreFactory,
+  type GenericCacheStoreFactory,
 } from './defineCacheStore'
 export { defineRecordStore, makeRecordStore } from './defineRecordStore'
+export { type Options } from './storeOptions'

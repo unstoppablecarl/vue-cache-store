@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { type GenericCacheStoreFactory, defineCacheStore } from '../src'
+import { defineCacheStore, type GenericCacheStoreFactory } from '../src'
 import { mount } from '@vue/test-utils'
 import type { Options } from '../types'
+import type { RequiredOptions } from '../types/storeOptions'
 
 const ID = 9
 
 describe('define cache store options', async () => {
+
+  it('permute', async () => {
+
+  })
 
   it('autoMountAndUnMount = false & autoClearUnused = true', async () => {
     const [wrapper1, wrapper2] = makeOptionsTestCases({
@@ -210,4 +215,27 @@ function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache: Gen
   cache.unMount()
   expect(cache.getUseCount()).toBe(0)
   expect(cache.ids()).toEqual([])
+}
+
+function permutation(options: RequiredOptions) {
+
+  const values = [
+    undefined,
+    true,
+    false,
+  ]
+
+  const result: Options[] = []
+  values.forEach((value1) => {
+    values.forEach((value2) => {
+      result.push({
+        autoMountAndUnMount: value1,
+        autoClearUnused: value2,
+      })
+    })
+  })
+
+
+
+  return result
 }

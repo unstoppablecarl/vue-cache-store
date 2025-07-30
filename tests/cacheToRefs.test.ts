@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computed, reactive, ref } from 'vue'
-import { reactiveToRefs } from '../src/defineCacheStore'
+
+import { reactiveToRefs } from '../src/reactiveToRefs'
 
 describe('reactiveToRefs()', async () => {
   it('ref()', async () => {

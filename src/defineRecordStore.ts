@@ -1,5 +1,13 @@
-import { computed, watchEffect } from 'vue'
-import { type CacheStore, defineCacheStore, type Options } from './defineCacheStore'
+import { watchEffect } from 'vue'
+import { defineCacheStore } from './defineCacheStore'
+import { makeOptionsHelper, type Options } from './storeOptions'
+import type { CacheStore } from '../types'
+
+export type RecordStoreDefinition<C, G> = {
+  create: C,
+  getRecord: G,
+  defaultOptions?: Options
+}
 
 export function makeRecordStore<
   C extends (record: REC, context: CacheStore<ReturnType<C>>) => ReturnType<C>,
@@ -9,11 +17,7 @@ export function makeRecordStore<
     create,
     getRecord,
     defaultOptions,
-  }: {
-  create: C,
-  getRecord: G,
-  defaultOptions?: Options
-}) {
+  }: RecordStoreDefinition<C, G>) {
   return defineRecordStore<C, G, REC>({ create, getRecord, defaultOptions })()
 }
 
@@ -26,15 +30,8 @@ export function defineRecordStore<
   {
     create,
     getRecord,
-    defaultOptions = {
-      autoMountAndUnMount: false,
-      autoClearUnused: false,
-    },
-  }: {
-    create: C,
-    getRecord: G,
-    defaultOptions?: Options
-  }) {
+    defaultOptions,
+  }: RecordStoreDefinition<C, G>) {
 
   const creatorFunction = (id: any, context: CacheStore<ReturnType<C>>) => {
     const record = getRecord(id)
@@ -51,5 +48,14 @@ export function defineRecordStore<
     return create(record as REC, context)
   }
 
-  return defineCacheStore(creatorFunction, defaultOptions)
+  const options = optionsHelper.merge(defaultOptions)
+
+  return defineCacheStore(creatorFunction, options)
 }
+
+const optionsHelper = makeOptionsHelper({
+  autoMountAndUnMount: false,
+  autoClearUnused: false,
+})
+
+optionsHelper.attach(defineRecordStore)
