@@ -159,13 +159,12 @@ export const usePersonCache = defineCacheStore((id) => {
 })
 
 // inside a component
-// default options can be overridden
+// overrides default options
 const personCache = usePersonCache.withOptions({
   autoMountAndUnMount: true,
   autoClearUnused: false,
 })
 ```
-
 ### API
 
 #### `reactiveToRefs()`
