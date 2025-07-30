@@ -7,9 +7,13 @@ const ID = 9
 
 
 describe('define cache store options', async () => {
-
-  it('permute', async () => {
-
+  it('default options', async () => {
+    expect(
+      defineCacheStore.getGlobalDefaultOptions(),
+    ).toEqual({
+      autoMountAndUnMount: true,
+      autoClearUnused: true,
+    })
   })
 
   const cases = [
@@ -84,33 +88,23 @@ describe('define cache store options', async () => {
 
 
       let testName = 'options override case: '
-      testName += `global: autoMountAndUnMount=${JSON.stringify(globalAutomountAndUnmount)},autoClearUnused=${JSON.stringify(globalAutoClearUnused)}`
-      testName += `default: autoMountAndUnMount=${JSON.stringify(defaultAutomountAndUnmount)},autoClearUnused=${JSON.stringify(defaultAutoClearUnused)}`
-      testName += `override: autoMountAndUnMount=${JSON.stringify(directAutomountAndUnmount)},autoClearUnused=${JSON.stringify(directAutoClearUnused)}`
+      testName += `global: autoMountAndUnMount=${JSON.stringify(globalAutomountAndUnmount)},autoClearUnused=${JSON.stringify(globalAutoClearUnused)},`
+      testName += `default: autoMountAndUnMount=${JSON.stringify(defaultAutomountAndUnmount)},autoClearUnused=${JSON.stringify(defaultAutoClearUnused)},`
+      testName += `override: autoMountAndUnMount=${JSON.stringify(directAutomountAndUnmount)},autoClearUnused=${JSON.stringify(directAutoClearUnused)},`
       testName += `expected: autoMountAndUnMount=${JSON.stringify(expectedAutomountAndUnmount)},autoClearUnused=${JSON.stringify(expectedAutoClearUnused)}`
 
       it(testName, async () => {
-
-        onTestFailed(() => {
-          console.log({
-            globalOptions,
-            defaultOptions,
-            directOptions,
-            expectedResultOptions: options,
-          })
-        })
-
         if (globalOptions) {
           defineCacheStore.setGlobalDefaultOptions(globalOptions)
         }
         let useTestCache
         if (defaultOptions) {
           useTestCache = defineCacheStore((id) => {
-            return {}
+            return { id }
           }, defaultOptions)
         } else {
           useTestCache = defineCacheStore((id) => {
-            return {}
+            return { id }
           })
         }
 
@@ -123,12 +117,25 @@ describe('define cache store options', async () => {
         }
 
         const wrapper = mount(component)
+
+        onTestFailed(() => {
+          console.table({
+            globalOptions,
+            defaultOptions,
+            directOptions,
+            expectedOptions: options,
+            // @ts-expect-error
+            actualOptions: wrapper.vm.cache.options(),
+          })
+        })
+
         testFunc(wrapper.vm.cache)
+        // @ts-expect-error
+        expect(wrapper.vm.cache.options()).toEqual(options)
       })
     })
   })
 })
-
 
 function makeComponentWithCache(useTestCache: ReturnType<typeof defineCacheStore>) {
   return {
@@ -207,7 +214,7 @@ function test_autoMountAndUnMount_is_true_AND_autoClearUnused_is_true(cache: Gen
 }
 
 function permuteCase(options: RequiredOptions) {
-  const p1 = permutation()
+  const p1 = globalPermutation()
   const p2 = permutation()
   const p3 = permutation()
 
@@ -229,6 +236,27 @@ function permuteCase(options: RequiredOptions) {
     })
   })
   return cases
+}
+
+function globalPermutation() {
+
+  const values = [
+    true,
+    false,
+  ]
+
+  const result: Options[] = []
+  values.forEach((value1) => {
+    values.forEach((value2) => {
+      result.push({
+        autoMountAndUnMount: value1,
+        autoClearUnused: value2,
+      })
+
+    })
+  })
+
+  return result
 }
 
 function permutation() {

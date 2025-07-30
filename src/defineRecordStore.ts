@@ -21,8 +21,8 @@ export function makeRecordStore<
 }
 
 const optionsHelper = makeOptionsHelper({
-  autoMountAndUnMount: true,
-  autoClearUnused: true,
+  autoMountAndUnMount: false,
+  autoClearUnused: false,
 })
 
 defineRecordStore.setGlobalDefaultOptions = optionsHelper.set
@@ -42,18 +42,14 @@ export function defineRecordStore<
   }: RecordStoreDefinition<C, G>) {
 
   const creatorFunction = (id: any, context: CacheStore<ReturnType<C>>) => {
-    const record = getRecord(id)
-    if (!record) {
-      throw new Error(`record id: "${id}" not found`)
-    }
-
     watchEffect(() => {
       if (!getRecord(id)) {
         context.remove(id)
       }
     })
 
-    return create(record as REC, context)
+    const record = getRecord(id) as REC
+    return create(record, context)
   }
 
   const options = optionsHelper.merge(defaultOptions)

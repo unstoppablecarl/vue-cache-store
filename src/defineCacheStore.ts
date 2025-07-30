@@ -5,32 +5,25 @@ import { reactiveToRefs } from './reactiveToRefs'
 export interface CacheStore<T> {
   // get cached ids
   ids(): any[],
-
   // get reactive object
-  get(id: any): Reactive<T>;
-
+  get(id: any): Reactive<T>,
   // get refs wrapped object like pinia's storeToRefs(useMyStore())
-  getRefs(id: any): ToRefs<Reactive<T>>;
-
+  getRefs(id: any): ToRefs<Reactive<T>>,
   // check if id is cached
-  has(id: any): boolean;
-
+  has(id: any): boolean,
   // remove cached id
-  remove(id: any): void;
-
+  remove(id: any): void,
   // get number of mounted components using this cache store
-  getUseCount(): number;
-
+  getUseCount(): number,
   // clear all cache ids
-  clear(): void;
-
+  clear(): void,
   // increase use count by 1
-  mount(): void;
-
+  mount(): void,
   // decrease use count by 1
   // and clear if count is 0
   // and autoClearUnused option is true
-  unMount(): void;
+  unMount(): void,
+  options(): RequiredOptions,
 }
 
 export type GenericCacheStoreFactory = ReturnType<typeof defineCacheStore>
@@ -106,6 +99,7 @@ export function defineCacheStore<
       clear: () => cache.clear(),
       mount,
       unMount,
+      options: () => options,
     }
 
     return context

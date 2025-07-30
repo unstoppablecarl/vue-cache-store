@@ -1,108 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { defineCacheStore, makeRecordStore } from '../src'
+import { defineRecordStore, makeRecordStore } from '../src'
 import { createPinia, defineStore, setActivePinia, type StoreDefinition } from 'pinia'
-import { computed, nextTick, type ToRefs, toRefs, watch } from 'vue'
-import { type ExtendedPeopleStore, type Person, type PersonInfo, usePeople } from './helpers/people'
+import { computed, nextTick, toRefs } from 'vue'
+import { type ExtendedPeopleStore, type Person, usePeople } from './helpers/people'
 
 describe('pinia integration', async () => {
-  it('cache using external store', async () => {
 
-    const usePeopleInfo = defineCacheStore((id: number): ToRefs<PersonInfo> => {
-      const peopleStore = usePeopleStore()
-      const person = computed(() => peopleStore.getPerson(id))
-      const { id: personId, name } = toRefs(peopleStore.getPerson(id) as Person)
-
-      return {
-        id: personId,
-        name,
-        nameLength: computed(() => person.value?.name.length || 0),
-      }
-    }, { autoMountAndUnMount: false, autoClearUnused: false })
-
-    const usePeopleStore: StoreDefinition = defineStore('people', () => {
-      const {
-        people,
-        getPerson,
-        add,
-        remove,
-        update,
-      } = usePeople()
-
-      const peopleInfo = usePeopleInfo()
-
-      watch(people, (newValue) => {
-        peopleInfo.ids().forEach(id => {
-          const exists = newValue.find((item) => item.id === id)
-          if (!exists) {
-            peopleInfo.remove(id)
-          }
-        })
-      }, { deep: true })
-
-      return {
-        people,
-        peopleInfo,
-        getPerson,
-        getInfo: (id: number) => peopleInfo.get(id),
-        add,
-        remove,
-        update,
-      }
+  it('default options', async () => {
+    expect(
+      defineRecordStore.getGlobalDefaultOptions(),
+    ).toEqual({
+      autoMountAndUnMount: false,
+      autoClearUnused: false,
     })
-
-    const pinia = createPinia()
-    setActivePinia(pinia)
-
-    const store = usePeopleStore() as ExtendedPeopleStore
-    await test_store(store)
-  })
-
-  it('cache inside of store', async () => {
-    const usePeopleStore: StoreDefinition = defineStore('people', () => {
-      const {
-        people,
-        getPerson,
-        add,
-        remove,
-        update,
-      } = usePeople()
-
-      const usePeopleInfo = defineCacheStore((id: number, { remove }) => {
-        watch(people, (newValue) => {
-          const exists = newValue.find((item) => item.id === id)
-          if (!exists) {
-            remove(id)
-          }
-        }, { deep: true })
-
-        const person = computed(() => getPerson(id))
-        const { id: personId, name } = toRefs(getPerson(id) as Person)
-
-        return {
-          id: personId,
-          name,
-          nameLength: computed(() => person.value?.name.length || 0),
-        }
-      }, { autoMountAndUnMount: false, autoClearUnused: false })
-
-      const peopleInfo = usePeopleInfo()
-
-      return {
-        people,
-        peopleInfo,
-        getPerson,
-        getInfo: (id: number) => peopleInfo.get(id),
-        add,
-        remove,
-        update,
-      }
-    })
-
-    const pinia = createPinia()
-    setActivePinia(pinia)
-
-    const store = usePeopleStore() as ExtendedPeopleStore
-    await test_store(store)
   })
 
   it('cache record store inside of store', async () => {
@@ -121,7 +31,7 @@ describe('pinia integration', async () => {
         getRecord(id: number) {
           return getPerson(id)
         },
-        create(record: Person, context) {
+        create(record: Person) {
           const person = computed(() => record)
           const { id: personId, name } = toRefs(record)
 
