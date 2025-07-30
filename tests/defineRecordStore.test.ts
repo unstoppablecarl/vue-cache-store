@@ -1,58 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { type CacheStore, defineCacheRecordStore, defineCacheStore } from '../src'
-import { createPinia, defineStore, setActivePinia, type Store, type StoreDefinition } from 'pinia'
-import { computed, nextTick, ref, type ToRefs, toRefs, watch } from 'vue'
-
-type Person = {
-  id: number,
-  name: string,
-}
-type PersonInfo = {
-  id: number,
-  name: string,
-  nameLength: number,
-}
-
-type PeopleStore = ReturnType<typeof usePeople>
-
-type ExtendedPeopleStore = Store<string, PeopleStore & {
-  getInfo: (id: number) => PersonInfo,
-  peopleInfo: CacheStore<Person>
-}>
-
-const usePeople = () => {
-  const people = ref<Person[]>([])
-  const peopleIdIncrement = ref(0)
-  const getPerson = (id: number) => people.value.find(person => person.id === id)
-
-  return {
-    people,
-    getPerson,
-    add(name: string) {
-      const id = peopleIdIncrement.value++
-      people.value.push({ id, name })
-      return id
-    },
-    remove(id: number) {
-      const index = people.value.findIndex(person => person.id === id)
-      if (index > -1) {
-        people.value.splice(index, 1)
-      }
-    },
-    update: (id: number, name: string) => {
-      const item = getPerson(id)
-      if (!item) {
-        throw new Error(`Item "${id}" not found`)
-      }
-
-      item.name = name
-    },
-  }
-}
+import { defineCacheStore, makeRecordStore } from '../src'
+import { createPinia, defineStore, setActivePinia, type StoreDefinition } from 'pinia'
+import { computed, nextTick, type ToRefs, toRefs, watch } from 'vue'
+import { type ExtendedPeopleStore, type Person, type PersonInfo, usePeople } from './helpers/people'
 
 describe('pinia integration', async () => {
-
-  it('cache outside of store', async () => {
+  it('cache using external store', async () => {
 
     const usePeopleInfo = defineCacheStore((id: number): ToRefs<PersonInfo> => {
       const peopleStore = usePeopleStore()
@@ -66,7 +19,7 @@ describe('pinia integration', async () => {
       }
     }, { autoMountAndUnMount: false, autoClearUnused: false })
 
-    const usePeopleStore = defineStore('people', () => {
+    const usePeopleStore: StoreDefinition = defineStore('people', () => {
       const {
         people,
         getPerson,
@@ -84,7 +37,6 @@ describe('pinia integration', async () => {
             peopleInfo.remove(id)
           }
         })
-
       }, { deep: true })
 
       return {
@@ -101,13 +53,11 @@ describe('pinia integration', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
 
-    // @ts-expect-error
     const store = usePeopleStore() as ExtendedPeopleStore
     await test_store(store)
   })
 
   it('cache inside of store', async () => {
-
     const usePeopleStore: StoreDefinition = defineStore('people', () => {
       const {
         people,
@@ -157,7 +107,7 @@ describe('pinia integration', async () => {
 
   it('cache record store inside of store', async () => {
 
-    const usePeopleStore = defineStore('people', () => {
+    const usePeopleStore: StoreDefinition = defineStore('people', () => {
 
       const {
         people,
@@ -167,7 +117,7 @@ describe('pinia integration', async () => {
         update,
       } = usePeople()
 
-      const usePeopleInfo = defineCacheRecordStore({
+      const peopleInfo = makeRecordStore({
         getRecord(id: number) {
           return getPerson(id)
         },
@@ -183,8 +133,6 @@ describe('pinia integration', async () => {
         },
       })
 
-      const peopleInfo = usePeopleInfo()
-
       return {
         people,
         peopleInfo,
@@ -196,10 +144,8 @@ describe('pinia integration', async () => {
       }
     })
 
-
     const pinia = createPinia()
     setActivePinia(pinia)
-    // @ts-expect-error
     const store = usePeopleStore() as ExtendedPeopleStore
     await test_store(store)
 
