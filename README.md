@@ -140,7 +140,7 @@ export const usePersonCache = defineCacheStore((id, context: CacheStore) => {
 Designed to cache an object store based on a record object.
 
 #### `defineRecordStore()` 
-
+Internally calls and returns `defineCacheStore()`
 ```ts
 // person-info.ts
 import { computed, ref } from 'vue'
@@ -164,7 +164,7 @@ const removePerson = (id: number) => {
     people.value.splice(index, 1)
   }
 }
-
+// defineRecordStore() internally calls and returns defineCacheStore()
 const usePersonInfo = defineRecordStore({
   getRecord(id: number) {
     // return value is watched
