@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defineRecordStore, makeRecordStore } from '../src'
 import { createPinia, defineStore, setActivePinia, type StoreDefinition } from 'pinia'
-import { computed, nextTick, ref, toRefs } from 'vue'
+import { computed, nextTick, ref, toRefs, toValue } from 'vue'
 import { type ExtendedPeopleStore, type Person, usePeople } from './helpers/people'
 
 describe('pinia integration', async () => {
@@ -81,6 +81,100 @@ describe('pinia integration', async () => {
     expect(personInfo.ids()).toEqual([])
   })
 
+  it('test readme pinia example', async () => {
+    type Person = {
+      id: number,
+      name: string,
+    }
+
+    const usePersonStore = defineStore('people', () => {
+      const people = ref<Person[]>([{
+        id: 99,
+        name: 'Jim'
+      }])
+      const peopleIdIncrement = ref(0)
+
+      const getPerson = (id: number) => people.value.find(person => person.id === id)
+      const add = (name: string) => {
+        const id = peopleIdIncrement.value++
+        people.value.push({ id, name })
+        return id
+      }
+      const remove = (id: number) => {
+        const index = people.value.findIndex(person => person.id === id)
+        if (index > -1) {
+          people.value.splice(index, 1)
+        }
+      }
+      const update = (id: number, name: string) => {
+        const item = getPerson(id)
+        if (!item) {
+          throw new Error(`Item "${id}" not found`)
+        }
+
+        item.name = name
+      }
+
+      const personInfo = makeRecordStore({
+        getRecord(id: number) {
+          return getPerson(id)
+        },
+        create(record: Person) {
+          const person = computed(() => record)
+          const { id: personId, name } = toRefs(record)
+
+          return {
+            id: personId,
+            name,
+            nameLength: computed(() => person.value?.name.length || 0),
+          }
+        },
+      })
+
+      return {
+        people,
+        personInfo,
+        getPerson,
+        getInfo: (id: number) => personInfo.get(id),
+        getInfoRefs: (id: number) => personInfo.getRefs(id),
+        add,
+        remove,
+        update,
+      }
+    })
+
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    const personStore = usePersonStore()
+
+    const person = personStore.getInfo(99)
+
+    expect(person.name).toBe('Jim')
+    expect(person.nameLength).toBe(3)
+
+    person.name = 'Jess'
+
+    expect(person.name).toBe('Jess')
+    expect(person.nameLength).toBe(4)
+
+    const { name } = personStore.getInfoRefs(99)
+    expect(name.value).toBe('Jess')
+
+    name.value = 'Ricky'
+    expect(name.value).toBe('Ricky')
+
+    const samePerson = personStore.getPerson(99) as Person
+    expect(samePerson.name).toBe('Ricky')
+
+    personStore.remove(99)
+    expect(toValue(personStore.people)).toEqual([])
+
+    await nextTick()
+    expect(personStore.personInfo.has(99)).toBe(false)
+    expect(personStore.personInfo.ids()).toEqual([])
+  })
+
   it('cache record store inside of store', async () => {
 
     const usePeopleStore: StoreDefinition = defineStore('people', () => {
@@ -124,7 +218,6 @@ describe('pinia integration', async () => {
     setActivePinia(pinia)
     const store = usePeopleStore() as ExtendedPeopleStore
     await test_store(store)
-
   })
 })
 
