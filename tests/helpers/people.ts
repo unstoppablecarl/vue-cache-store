@@ -15,7 +15,7 @@ export type PeopleStore = ReturnType<typeof usePeople>
 
 export type ExtendedPeopleStore = Store<string, PeopleStore & {
   getInfo: (id: number) => PersonInfo,
-  peopleInfo: CacheStore<Person>
+  personInfo: CacheStore<Person>
 }>
 export const usePeople = () => {
   const people = ref<Person[]>([])

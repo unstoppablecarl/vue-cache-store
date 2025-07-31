@@ -20,8 +20,8 @@ export interface CacheStore<T> {
   // increase use count by 1
   mount(): void,
   // decrease use count by 1
-  // and clear if count is 0
-  // and autoClearUnused option is true
+  // if autoClearUnused option is true,
+  // calls clear(), clearing the whole store if count becomes 0
   unMount(): void,
   options(): RequiredOptions,
 }

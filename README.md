@@ -1,29 +1,100 @@
 # Vue Cache Store
 Dynamically create, re-use, and destroy [Pinia](https://pinia.vuejs.org/) like stores.
 
-## Use Case
-When you need reusable non-trivial computed/reactive objects in multiple components.
-
 ## Installation
 
 `$ npm i vue-cache-store`
+
+## Primary Use Case
+When using non-trivial derived reactive objects in multiple components.
+
+```ts
+// person-data.ts
+type Person = {
+  id: number,
+  name: string,
+}
+
+export const people = ref<Person[]>([{
+  id: 99,
+  firstName: 'Jim',
+  lastName: 'Kirk'
+}])
+export const getPerson = (id: number) => people.value.find(person => person.id === id)
+
+export const getPersonInfo = (person: Person) => {
+  const firstName = computed(() => person.firstName)
+  const lastName = computed(() => person.lastName)
+  // 🧠 imagine this is non-trivial and complicated 🧠
+  return {
+    id: computed(() => id),
+    firstName,
+    lastName,
+    fullName: computed(() => firstName.value + ' ' + lastName.value)
+  }
+}
+
+// in multiple components
+const person = getPerson(99)
+const info = getPersonInfo(person)
+// each time getPersonInfo() is called 
+// it is re-run and creates redundant copies of its info object
+```
+
+### Solution
+Reusable non-trivial computed/reactive objects in multiple components.
+
+```ts 
+// person-info.ts
+import { computed } from 'vue'
+import { watchRecordStore } from 'vue-cache-store'
+import { getPerson, getPersonInfo } from 'person-data.ts'
+
+export const personInfo = watchRecordStore(
+  // record watcher
+  // auto clears cached object if returns falsy
+  (id: number) => getPerson(id),
+  // cached object creator
+  (person: Person) => getPersonInfo(person),
+)
+```
+```ts
+// inside multiple components
+import { personInfo } from 'person-info.ts'
+
+// returns reactive object
+const reactivePerson = personInfo.get(id)
+// ❌ dereferencing reactive objects breaks them
+const { lastName } = personInfo.get(id)
+// ✅ use the getRefs() instead
+const { firstName, fullName } = personInfo.getRefs(id)
+
+const computedLastName = computed(() => personInfo.get(id).lastName)
+```
 
 ## Usage
 
 ### Define a Cache Store
 Cache stores are designed to behave similar to [Pinia](https://pinia.vuejs.org/) stores. 
-The value returned by `usePersonCache()` can be used similar to Pinia.
+The value returned by `usePersonCache().get(id)` can be used similar to a Pinia store.
 ```ts
 // person-cache.ts
 import { defineCacheStore } from 'vue-cache-store'
 import { computed } from 'vue'
-// example service
-import { getRecordInfo } from 'record-info-getter'
+
+// simplified data source
+const people = ref([{
+  id: 99,
+  firstName: 'Jim',
+  lastName: 'Kirk'
+}])
+
+const getPerson = (id: number) => people.value.find(person => person.id === id)
 
 export const usePersonCache = defineCacheStore((id) => {
-  const info = getRecordInfo(id)
-  const firstName = computed(() => info.firstName)
-  const lastName = computed(() => info.lastName)
+  const person = getPerson(id)
+  const firstName = computed(() => person.firstName)
+  const lastName = computed(() => person.lastName)
   
   return {
     id: computed(() => id),
@@ -102,12 +173,14 @@ type CacheStore = {
   clear(): void,
   // increase use count by 1
   mount(): void,
-  // decrease use count by 1 
-  // and clear if count is 0
-  // and autoClearUnused option is true
+  // decrease use count by 1
+  // if autoClearUnused option is true,
+  // calls clear(), clearing the whole store if count becomes 0
   unMount(): void,
 }
 const cache: CacheStore = usePersonCache()
+
+const personInfo = cache.get(99)
 ```
 
 ### Cache Store Context
@@ -141,39 +214,38 @@ Designed to cache an object store based on a record object.
 
 #### `defineRecordStore()` 
 Internally calls and returns `defineCacheStore()`
+
 ```ts
 // person-info.ts
 import { computed, ref } from 'vue'
 import { defineRecordStore } from 'vue-cache-store'
 
 // minimal example
-type Person = {
-  id: number,
-  name: string,
-}
-
-const people = ref<Person[]>([{
+const people = ref([{
   id: 99,
-  name: 'Jim'
+  name: 'Jim',
 }])
 
-const getPerson = (id: number) => people.value.find(person => person.id === id)
-const removePerson = (id: number) => {
+const getPerson = (id) => people.value.find(person => person.id === id)
+const removePerson = (id) => {
   const index = people.value.findIndex(person => person.id === id)
   if (index > -1) {
     people.value.splice(index, 1)
   }
 }
 // defineRecordStore() internally calls and returns defineCacheStore()
-const usePersonInfo = defineRecordStore({
-  getRecord(id: number) {
-    // return value is watched
+export const usePersonInfo = defineRecordStore(
+  // record watcher
+  (id: number) => {
+    // this function is watched
     // if the return value becomes falsy
     // the cached object is removed automatically
     return getPerson(id)
   },
-  create(record: Person) {
-    // return value of this function is cached
+
+  // cached object creator
+  (record: Person) => {
+    // return value of this function is cached.
     // even if used by multiple components
     // it will not be called repeatedly
     const { id: personId, name } = toRefs(record)
@@ -184,7 +256,7 @@ const usePersonInfo = defineRecordStore({
       nameLength: computed(() => record.name.length || 0),
     }
   },
-})
+)
 
 const personInfo = usePersonInfo()
 
@@ -214,29 +286,24 @@ personInfo.has(99) // false
 personInfo.ids() // []
 ```
 
-#### `makeRecordStore()`
+#### `watchRecordStore()`
 ```ts
-import { makeRecordStore } from 'vue-cache-store'
+import { watchRecordStore } from 'vue-cache-store'
 
-const personInfo = makeRecordStore({
-  getRecord(id) {
-    // ...
-  },
-  create(record) {
-    // ...
-  },
-})
-// proxy for
-const personInfoAlso = defineRecordStore(/* ... */)()
-// with more type clarity
+export const personInfo = watchRecordStore(/* ... */)
+
+// watchRecordStore() internally does the following:
+const useInfo = defineRecordStore(/* ... */)()
+// with typing intact
+return useInfo()
 ```
 
-#### `makeRecordStore()` Usage with a [Pinia](https://pinia.vuejs.org/) store
+#### Usage within a [Pinia](https://pinia.vuejs.org/) store
 
 ```ts
 // person-store.ts
 import { defineStore } from 'pinia'
-import { makeRecordStore } from 'vue-cache-store'
+import { watchRecordStore } from 'vue-cache-store'
 
 // minimal example
 type Person = {
@@ -244,7 +311,7 @@ type Person = {
   name: string,
 }
 
-const usePersonStore = defineStore('people', () => {
+export const usePersonStore = defineStore('people', () => {
   const people = ref<Person[]>([{
     id: 99,
     name: 'Jim',
@@ -272,21 +339,19 @@ const usePersonStore = defineStore('people', () => {
     item.name = name
   }
 
-  const personInfo = makeRecordStore({
-    getRecord(id: number) {
-      return getPerson(id)
-    },
-    create(record: Person) {
+  const personInfo = watchRecordStore(
+    (id: number) => getPerson(id),
+    (record: Person) => {
       const person = computed(() => record)
-      const { name } = toRefs(record)
+      const { id: personId, name } = toRefs(record)
 
       return {
-        id: computed(() => person.value.id),
+        id: personId,
         name,
         nameLength: computed(() => person.value?.name.length || 0),
       }
-    },
-  })
+    }
+  )
 
   return {
     people,
@@ -334,10 +399,10 @@ personStore.personInfo.ids() // []
 
 When defining a cache store the second argument is a default options object.
 
-| option                | description                                                                                      |
-|:----------------------|:-------------------------------------------------------------------------------------------------|
-| `autoMountAndUnMount` | If true, automatically tracks the number of mounted components using the cache store             |
-| `autoClearUnused`     | If true, when there are no longer any mounted components using a cache store it will be cleared. |
+| option                | description                                                                                                                                                                                           |
+|:----------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `autoMountAndUnMount` | If true, automatically tracks the number of mounted components using the cache store. <br> Mounting is tracked when calling in the root of a component. Example: `const personInfo = usePersonInfo()` |
+| `autoClearUnused`     | If true, when there are no longer any mounted components using a cache store it will be cleared.                                                                                                      |
 
 #### `defineCacheStore()` Options
 ```ts
@@ -387,6 +452,7 @@ const options = {
 }
 ```
 #### `defineRecordStore()` Options Usage
+
 ```ts
 // person-record.ts
 import { defineRecordStore } from 'vue-cache-store'
@@ -398,18 +464,18 @@ defineRecordStore.setGlobalDefaultOptions({
 })
 
 // defining a record store with store default options overriding global defaults
-export const usePersonRecord = defineRecordStore({
-  getRecord(id) {
-
+export const usePersonRecord = defineRecordStore(
+  (id) => {
+    // ...
   },
-  create(){
-    
+  () => {
+    // ...
   },
-  defaultOptions:  {
+  {
     autoMountAndUnMount: false,
     autoClearUnused: false,
-  }
-})
+  },
+)
 
 // inside a component
 // overrides usePersonRecord default options and defineRecordStore global defaults
@@ -418,6 +484,26 @@ const personCache = usePersonRecord({
   autoClearUnused: false,
 })
 ```
+#### `watchRecordStore()` Options
+`watchRecordStore()` calls `defineRecordStore()` internally so it uses the global default options `defineRecordStore()`
+```ts
+import { watchRecordStore } from 'vue-cache-store'
+
+// defining a record store with store default options overriding global defaults
+export const usePersonRecord = watchRecordStore(
+  (id) => {
+    // ...
+  },
+  () => {
+    // ...
+  },
+  {
+    autoMountAndUnMount: false,
+    autoClearUnused: false,
+  },
+)
+```
+
 
 ### API
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defineRecordStore, makeRecordStore } from '../src'
+import { defineRecordStore, watchRecordStore } from '../src'
 import { createPinia, defineStore, setActivePinia, type StoreDefinition } from 'pinia'
 import { computed, nextTick, ref, toRefs, toValue } from 'vue'
 import { type ExtendedPeopleStore, type Person, usePeople } from './helpers/people'
@@ -34,14 +34,9 @@ describe('pinia integration', async () => {
       }
     }
 
-    const usePersonInfo = defineRecordStore({
-      getRecord(id: number) {
-        // return value is watched
-        // if the return value changes to falsy
-        // the cached object is removed automatically
-        return getPerson(id)
-      },
-      create(record: Person) {
+    const usePersonInfo = defineRecordStore(
+      (id: number) => getPerson(id),
+      (record: Person) => {
         const { id: personId, name } = toRefs(record)
 
         return {
@@ -50,7 +45,7 @@ describe('pinia integration', async () => {
           nameLength: computed(() => record.name.length || 0),
         }
       },
-    })
+    )
 
     const personInfo = usePersonInfo()
 
@@ -90,7 +85,7 @@ describe('pinia integration', async () => {
     const usePersonStore = defineStore('people', () => {
       const people = ref<Person[]>([{
         id: 99,
-        name: 'Jim'
+        name: 'Jim',
       }])
       const peopleIdIncrement = ref(0)
 
@@ -115,11 +110,9 @@ describe('pinia integration', async () => {
         item.name = name
       }
 
-      const personInfo = makeRecordStore({
-        getRecord(id: number) {
-          return getPerson(id)
-        },
-        create(record: Person) {
+      const personInfo = watchRecordStore(
+        (id: number) => getPerson(id),
+        (record: Person) => {
           const person = computed(() => record)
           const { id: personId, name } = toRefs(record)
 
@@ -129,7 +122,7 @@ describe('pinia integration', async () => {
             nameLength: computed(() => person.value?.name.length || 0),
           }
         },
-      })
+      )
 
       return {
         people,
@@ -187,11 +180,11 @@ describe('pinia integration', async () => {
         update,
       } = usePeople()
 
-      const peopleInfo = makeRecordStore({
-        getRecord(id: number) {
+      const personInfo = watchRecordStore(
+        (id: number) => {
           return getPerson(id)
         },
-        create(record: Person) {
+        (record: Person) => {
           const person = computed(() => record)
           const { id: personId, name } = toRefs(record)
 
@@ -201,13 +194,13 @@ describe('pinia integration', async () => {
             nameLength: computed(() => person.value?.name.length || 0),
           }
         },
-      })
+      )
 
       return {
         people,
-        peopleInfo,
+        personInfo,
         getPerson,
-        getInfo: (id: number) => peopleInfo.get(id),
+        getInfo: (id: number) => personInfo.get(id),
         add,
         remove,
         update,
@@ -227,8 +220,8 @@ async function test_store(store: ExtendedPeopleStore) {
 
   expect(store.getPerson(id)).toEqual({ id: id, name: 'jim' })
   expect(store.getInfo(id)).toEqual({ id: id, name: 'jim', nameLength: 3 })
-  expect(store.peopleInfo.ids()).toEqual([id])
-  expect(store.peopleInfo.has(id)).toEqual(true)
+  expect(store.personInfo.ids()).toEqual([id])
+  expect(store.personInfo.has(id)).toEqual(true)
 
   store.update(id, 'jimmy')
 
@@ -239,9 +232,9 @@ async function test_store(store: ExtendedPeopleStore) {
 
   expect(store.getPerson(id2)).toEqual({ id: id2, name: 'jennifer' })
   expect(store.getInfo(id2)).toEqual({ id: id2, name: 'jennifer', nameLength: 8 })
-  expect(store.peopleInfo.ids()).toEqual([id, id2])
-  expect(store.peopleInfo.has(id)).toEqual(true)
-  expect(store.peopleInfo.has(id2)).toEqual(true)
+  expect(store.personInfo.ids()).toEqual([id, id2])
+  expect(store.personInfo.has(id)).toEqual(true)
+  expect(store.personInfo.has(id2)).toEqual(true)
 
   store.remove(id)
 
@@ -249,12 +242,12 @@ async function test_store(store: ExtendedPeopleStore) {
 
   expect(store.getPerson(id)).toEqual(undefined)
 
-  expect(store.peopleInfo.ids()).toEqual([id2])
-  expect(store.peopleInfo.has(id)).toEqual(false)
+  expect(store.personInfo.ids()).toEqual([id2])
+  expect(store.personInfo.has(id)).toEqual(false)
 
   expect(store.getPerson(id2)).toEqual({ id: id2, name: 'jennifer' })
   expect(store.getInfo(id2)).toEqual({ id: id2, name: 'jennifer', nameLength: 8 })
-  expect(store.peopleInfo.has(id2)).toEqual(true)
+  expect(store.personInfo.has(id2)).toEqual(true)
 
   expect(() => store.getInfo(id)).toThrowError(`defineRecordStore(): Record id "${id}" not found.`)
 }

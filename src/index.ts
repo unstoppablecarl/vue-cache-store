@@ -5,5 +5,5 @@ export {
   type GenericCacheStore,
   type GenericCacheStoreFactory,
 } from './defineCacheStore'
-export { defineRecordStore, makeRecordStore } from './defineRecordStore'
+export { defineRecordStore, watchRecordStore } from './defineRecordStore'
 export { type Options } from './storeOptions'
