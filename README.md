@@ -347,8 +347,7 @@ const options = {
   autoClearUnused: true,
 }
 ```
-#### `defineCacheStore()` Usage
-
+#### `defineCacheStore()` Options Usage
 ```ts
 // person-cache.ts
 import { defineCacheStore } from 'vue-cache-store'
@@ -387,7 +386,7 @@ const options = {
   autoClearUnused: false,
 }
 ```
-#### `defineRecordStore()` Usage
+#### `defineRecordStore()` Options Usage
 ```ts
 // person-record.ts
 import { defineRecordStore } from 'vue-cache-store'
