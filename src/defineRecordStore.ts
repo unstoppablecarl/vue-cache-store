@@ -19,31 +19,32 @@ export interface RecordStore<T> {
 export type GenericRecordStore = ReturnType<typeof defineRecordStore>
 
 export function defineRecordStore<
-  C extends (id: any, context: RecordStore<ReturnType<C>>) => ReturnType<C>
+  O extends object,
+  C extends (id: any, context: RecordStore<ReturnType<C>>) => O
 >(creatorFunction: C) {
-  type RecordStoreResult = RecordStore<ReturnType<C>>
+  type Result = Reactive<ReturnType<C>>
 
-  const cache = new Map<any, Reactive<ReturnType<C>>>()
+  const cache = new Map<any, Result>()
 
-  function get(id: any): Reactive<ReturnType<C>> {
+  function get(id: any): Result {
     let result = cache.get(id)
     if (result) {
       return result
     }
 
-    const object = creatorFunction(id, context) as object
-    result = reactive(object) as Reactive<ReturnType<C>>
+    const object = creatorFunction(id, context)
+    result = reactive(object) as Result
     cache.set(id, result)
 
     return result
   }
 
   const getRefs = (id: any) => {
-    const obj = get(id) as Reactive<ReturnType<C>>
+    const obj = get(id) as Result
     return reactiveToRefs(obj)
   }
 
-  const context: RecordStoreResult = {
+  const context: RecordStore<ReturnType<C>> = {
     ids: () => [...cache.keys()],
     get,
     getRefs,
@@ -54,3 +55,11 @@ export function defineRecordStore<
 
   return context
 }
+
+const c = defineRecordStore(() => {
+  return {
+    foo: 'bar',
+  }
+})
+
+const z = c.get(99)
