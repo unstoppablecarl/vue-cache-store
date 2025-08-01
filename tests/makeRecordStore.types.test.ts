@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import type { Reactive, ToRefs } from 'vue'
-import { defineRecordStore, type GenericRecordStore, type RecordStore } from '../src'
+import { makeRecordStore, type GenericRecordStore, type RecordStore } from '../src'
 
 type Item = {
   id: number,
@@ -18,7 +18,7 @@ describe('defineCacheStore() types', async () => {
       clear(): void,
     }
 
-    const cache: CustomCacheStore = defineRecordStore((id: number, context: RecordStore<Item>): Item => {
+    const cache: CustomCacheStore = makeRecordStore((id: number, context: RecordStore<Item>): Item => {
       return {
         id,
         name: 'susan',
@@ -36,7 +36,7 @@ describe('defineCacheStore() types', async () => {
       }
     }
 
-    const store: GenericRecordStore = defineRecordStore(creatorFunction)
+    const store: GenericRecordStore = makeRecordStore(creatorFunction)
     expectTypeOf(store).toEqualTypeOf<GenericRecordStore>()
   })
 
@@ -52,7 +52,7 @@ describe('defineCacheStore() types', async () => {
       }
     }
 
-    const cache = defineRecordStore(creatorFunction)
+    const cache = makeRecordStore(creatorFunction)
 
     expectTypeOf(cache).toEqualTypeOf<RecordStore<Item, number>>()
 

@@ -1,5 +1,5 @@
 import { watchEffect } from 'vue'
-import { defineRecordStore, type RecordStore } from './defineRecordStore'
+import { makeRecordStore, type RecordStore } from './makeRecordStore'
 
 export function watchRecordStore<
   G extends (id: any) => object & ReturnType<G> | undefined,
@@ -26,5 +26,5 @@ export function watchRecordStore<
     return create(record, context)
   }
 
-  return defineRecordStore<typeof creatorFunction>(creatorFunction)
+  return makeRecordStore<typeof creatorFunction>(creatorFunction)
 }

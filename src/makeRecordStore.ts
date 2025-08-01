@@ -3,7 +3,7 @@ import { reactiveToRefs } from './reactiveToRefs'
 
 export type RecordStore<T extends object, ID = NonNullable<any>> = {
   // get cached ids
-  ids(): any[],
+  ids(): ID[],
   // get reactive object
   get(id: ID): Reactive<T>,
   // get refs wrapped object like pinia's storeToRefs(useMyStore())
@@ -15,12 +15,12 @@ export type RecordStore<T extends object, ID = NonNullable<any>> = {
   // clear all cache ids
   clear(): void,
   // loop over each cached item
-  forEach(callbackFunction: (value: Reactive<T>, key: ID, map: Map<ID, Reactive<T>>) => void, thisArg?: any): void;
+  forEach(callbackFunction: (value: Reactive<T>, key: ID) => void): void;
 }
 
-export type GenericRecordStore<> = ReturnType<typeof defineRecordStore>
+export type GenericRecordStore<> = ReturnType<typeof makeRecordStore>
 
-export function defineRecordStore<
+export function makeRecordStore<
   C extends (id: any, context: RecordStore<object & ReturnType<C>, Parameters<C>[0]>) => object & ReturnType<C>,
 >(creatorFunction: C) {
   type ID = Parameters<C>[0]
@@ -54,8 +54,8 @@ export function defineRecordStore<
     has: (id: ID) => cache.has(id),
     remove: (id: ID) => cache.delete(id),
     clear: () => cache.clear(),
-    forEach: (callbackFunction: (value: ReactiveResult, key: ID, map: Map<ID, ReactiveResult>) => void, thisArg?: any) => {
-      cache.forEach(callbackFunction, thisArg)
+    forEach: (callbackFunction: (value: ReactiveResult, key: ID) => void) => {
+      cache.forEach(callbackFunction)
     }
   }
 

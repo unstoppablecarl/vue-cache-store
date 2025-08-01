@@ -1,8 +1,8 @@
 export {
-  defineRecordStore,
+  makeRecordStore,
   type GenericRecordStore,
   type RecordStore,
-} from './defineRecordStore'
+} from './makeRecordStore'
 
 export {
   watchRecordStore,

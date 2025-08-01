@@ -8,8 +8,12 @@ Dynamically create, re-use, and destroy [Pinia](https://pinia.vuejs.org/) like s
 ## Primary Use Case
 When using non-trivial derived reactive objects in multiple components.
 
+### Generic Vue example
+
 ```ts
 // person-data.ts
+import { computed, ref, reactive } from 'vue'
+
 type Person = {
   id: number,
   name: string,
@@ -23,25 +27,31 @@ export const people = ref<Person[]>([{
 export const getPerson = (id: number) => people.value.find(person => person.id === id)
 
 export const getPersonInfo = (person: Person) => {
+  // 🧠 imagine this is non-trivial and complicated 🧠
   const firstName = computed(() => person.firstName)
   const lastName = computed(() => person.lastName)
-  // 🧠 imagine this is non-trivial and complicated 🧠
-  return {
+  const fullName = computed(() => firstName.value + ' ' + lastName.value)
+  
+  return reactive({
     id: computed(() => id),
     firstName,
     lastName,
-    fullName: computed(() => firstName.value + ' ' + lastName.value)
-  }
+    fullName,
+  })
 }
+```
 
+```ts
 // in multiple components
+import { getPerson, getPersonInfo } from 'person-data.ts'
+
 const person = getPerson(99)
 const info = getPersonInfo(person)
 // each time getPersonInfo() is called 
 // it is re-run and creates redundant copies of its info object
 ```
 
-### Solution
+### Vue Cache Store Solution
 Reusable non-trivial computed/reactive objects in multiple components.
 
 ```ts 
@@ -58,6 +68,7 @@ export const personInfo = watchRecordStore(
   (person: Person) => getPersonInfo(person),
 )
 ```
+
 ```ts
 // inside multiple components
 import { personInfo } from 'person-info.ts'
@@ -74,12 +85,12 @@ const computedLastName = computed(() => personInfo.get(id).lastName)
 
 ## Usage
 
-### Define a Cache Store
+### Define a Record Store
 Cache stores are designed to behave similar to [Pinia](https://pinia.vuejs.org/) stores. 
 The value returned by `usePersonCache().get(id)` can be used similar to a Pinia store.
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'vue-cache-store'
+import { makeRecordStore } from 'vue-cache-store'
 import { computed } from 'vue'
 
 // simplified data source
@@ -91,7 +102,7 @@ const people = ref([{
 
 const getPerson = (id: number) => people.value.find(person => person.id === id)
 
-export const usePersonCache = defineCacheStore((id) => {
+export const usePersonCache = makeRecordStore((id) => {
   const person = getPerson(id)
   const firstName = computed(() => person.firstName)
   const lastName = computed(() => person.lastName)
@@ -138,10 +149,10 @@ export const usePersonCache = defineCacheStore((id) => {
 
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'vue-cache-store'
+import { makeRecordStore } from 'vue-cache-store'
 import { type ToRefs, type Reactive} from 'vue'
 
-export const usePersonCache = defineCacheStore((id: number): Item => {
+export const usePersonCache = makeRecordStore((id: number): Item => {
   return {
     id,
     name: 'sue',
@@ -188,11 +199,11 @@ The `context` argument is the current cache store instance.
 
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'vue-cache-store'
+import { makeRecordStore } from 'vue-cache-store'
 import { getRecordInfo } from 'record-info-getter'
 import { computed } from 'vue'
 
-export const usePersonCache = defineCacheStore((id, context: CacheStore) => {
+export const usePersonCache = makeRecordStore((id, context: CacheStore) => {
   const info = getRecordInfo(id)
   const firstName = computed(() => info.firstName)
   const lastName = computed(() => info.lastName)
@@ -212,13 +223,13 @@ export const usePersonCache = defineCacheStore((id, context: CacheStore) => {
 
 Designed to cache an object store based on a record object.
 
-#### `defineRecordStore()` 
-Internally calls and returns `defineCacheStore()`
+#### `makeRecordStore()` 
+Internally calls and returns `makeRecordStore()`
 
 ```ts
 // person-info.ts
 import { computed, ref } from 'vue'
-import { defineRecordStore } from 'vue-cache-store'
+import { makeRecordStore } from 'vue-cache-store'
 
 // minimal example
 const people = ref([{
@@ -233,8 +244,8 @@ const removePerson = (id) => {
     people.value.splice(index, 1)
   }
 }
-// defineRecordStore() internally calls and returns defineCacheStore()
-export const usePersonInfo = defineRecordStore(
+// makeRecordStore() internally calls and returns makeRecordStore()
+export const usePersonInfo = makeRecordStore(
   // record watcher
   (id: number) => {
     // this function is watched
@@ -293,7 +304,7 @@ import { watchRecordStore } from 'vue-cache-store'
 export const personInfo = watchRecordStore(/* ... */)
 
 // watchRecordStore() internally does the following:
-const useInfo = defineRecordStore(/* ... */)()
+const useInfo = makeRecordStore(/* ... */)()
 // with typing intact
 return useInfo()
 ```
@@ -404,7 +415,7 @@ When defining a cache store the second argument is a default options object.
 | `autoMountAndUnMount` | If true, automatically tracks the number of mounted components using the cache store. <br> Mounting is tracked when calling in the root of a component. Example: `const personInfo = usePersonInfo()` |
 | `autoClearUnused`     | If true, when there are no longer any mounted components using a cache store it will be cleared.                                                                                                      |
 
-#### `defineCacheStore()` Options
+#### `makeRecordStore()` Options
 ```ts
 // global default option values
 const options = {
@@ -412,19 +423,19 @@ const options = {
   autoClearUnused: true,
 }
 ```
-#### `defineCacheStore()` Options Usage
+#### `makeRecordStore()` Options Usage
 ```ts
 // person-cache.ts
-import { defineCacheStore } from 'vue-cache-store'
+import { makeRecordStore } from 'vue-cache-store'
 
-// set new global defaults for all stores created with defineCacheStore()
-defineCacheStore.setGlobalDefaultOptions({
+// set new global defaults for all stores created with makeRecordStore()
+makeRecordStore.setGlobalDefaultOptions({
   autoMountAndUnMount: false,
   autoClearUnused: false,
 })
 
 // defining a cache store with store default options overriding global defaults
-export const usePersonCache = defineCacheStore((id) => {
+export const usePersonCache = makeRecordStore((id) => {
   return {
     // ...
   }
@@ -434,14 +445,14 @@ export const usePersonCache = defineCacheStore((id) => {
 })
 
 // inside a component
-// overrides usePersonCache default options and defineCacheStore global defaults
+// overrides usePersonCache default options and makeRecordStore global defaults
 const personCache = usePersonCache({
   autoMountAndUnMount: true,
   autoClearUnused: false,
 })
 ```
 
-#### `defineRecordStore()` Options
+#### `makeRecordStore()` Options
 The intended use case for record stores removes cache objects when their source has been removed.
 So its global defaults are different.
 ```ts
@@ -451,20 +462,20 @@ const options = {
   autoClearUnused: false,
 }
 ```
-#### `defineRecordStore()` Options Usage
+#### `makeRecordStore()` Options Usage
 
 ```ts
 // person-record.ts
-import { defineRecordStore } from 'vue-cache-store'
+import { makeRecordStore } from 'vue-cache-store'
 
-// set new global defaults for all stores created with defineRecordStore()
-defineRecordStore.setGlobalDefaultOptions({
+// set new global defaults for all stores created with makeRecordStore()
+makeRecordStore.setGlobalDefaultOptions({
   autoMountAndUnMount: false,
   autoClearUnused: false,
 })
 
 // defining a record store with store default options overriding global defaults
-export const usePersonRecord = defineRecordStore(
+export const usePersonRecord = makeRecordStore(
   (id) => {
     // ...
   },
@@ -478,14 +489,14 @@ export const usePersonRecord = defineRecordStore(
 )
 
 // inside a component
-// overrides usePersonRecord default options and defineRecordStore global defaults
+// overrides usePersonRecord default options and makeRecordStore global defaults
 const personCache = usePersonRecord({
   autoMountAndUnMount: true,
   autoClearUnused: false,
 })
 ```
 #### `watchRecordStore()` Options
-`watchRecordStore()` calls `defineRecordStore()` internally so it uses the global default options `defineRecordStore()`
+`watchRecordStore()` calls `makeRecordStore()` internally so it uses the global default options `makeRecordStore()`
 ```ts
 import { watchRecordStore } from 'vue-cache-store'
 
