@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defineCacheStore } from '../src'
+import { defineRecordStore } from '../src'
 import { mount } from '@vue/test-utils'
 import { computed, nextTick, reactive, ref, toRef, toValue, watch } from 'vue'
 
@@ -7,7 +7,7 @@ describe('define cache store', async () => {
 
   it('ref()', async () => {
     const x = ref('a')
-    const useTestCache = defineCacheStore((id) => {
+    const cache = defineRecordStore((id) => {
       return {
         id: ref(id),
         x,
@@ -18,7 +18,6 @@ describe('define cache store', async () => {
 
     const App = {
       setup() {
-        const cache = useTestCache()
         const comp = computed(() => cache.get(ID))
         const item = cache.get(ID)
         const itemRefs = cache.getRefs(ID)
@@ -65,20 +64,10 @@ describe('define cache store', async () => {
 
     testState(VAL2, ID)
 
-    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
-
-    expect(cache.getUseCount()).toBe(1)
     expect(cache.ids()).toEqual([ID])
     expect(cache.has(ID)).toEqual(true)
 
-    wrapper.unmount()
-
-    expect(cache.getUseCount()).toBe(0)
-    expect(cache.ids()).toEqual([])
-    expect(cache.has(ID)).toEqual(false)
-
     function testState(x: string, id: number) {
-
       // @ts-expect-error
       expect(wrapper.vm.comp.value).toBe(undefined)
       // @ts-expect-error
@@ -94,7 +83,6 @@ describe('define cache store', async () => {
       expect(wrapper.vm.item.x).toEqual(x)
       // @ts-expect-error
       expect(wrapper.vm.item.id).toEqual(id)
-
     }
   })
 
@@ -108,7 +96,7 @@ describe('define cache store', async () => {
       set: (value => x2.value = value),
     })
 
-    const useTestCache = defineCacheStore((id) => {
+    const cache = defineRecordStore((id) => {
       return {
         id: computed(() => id),
         c,
@@ -120,7 +108,6 @@ describe('define cache store', async () => {
 
     const App = {
       setup() {
-        const cache = useTestCache()
         const comp = computed(() => cache.get(ID))
         const item = cache.get(ID)
         const itemRefs = cache.getRefs(ID)
@@ -190,7 +177,7 @@ describe('define cache store', async () => {
   it('reactive()', async () => {
     const r = reactive({ x: 'a' })
 
-    const useTestCache = defineCacheStore((id) => {
+    const cache = defineRecordStore((id) => {
       return {
         r,
       }
@@ -200,7 +187,6 @@ describe('define cache store', async () => {
 
     const App = {
       setup() {
-        const cache = useTestCache()
         const comp = computed(() => cache.get(ID))
         const item = cache.get(ID)
         const { r } = cache.getRefs(ID)
@@ -263,7 +249,7 @@ describe('define cache store', async () => {
       return data.value.find((item) => item.id === id) as Item
     }
 
-    const useTestCache = defineCacheStore((id) => {
+    const cache = defineRecordStore((id) => {
       const item = findItem(id) as Item
       return {
         id: ref(id),
@@ -277,8 +263,6 @@ describe('define cache store', async () => {
       },
       setup(props: { cacheId: Number }) {
         const cacheId = computed(() => props.cacheId)
-
-        const cache = useTestCache()
         const comp = computed(() => cache.get(cacheId.value))
         const compRefs = computed(() => cache.getRefs(cacheId.value))
         const name = computed({
@@ -377,7 +361,7 @@ describe('define cache store', async () => {
 
   it('only caches once', async () => {
     const count = ref(0)
-    const useTestCache = defineCacheStore((id) => {
+    const cache = defineRecordStore((id) => {
       count.value++
       return {
         count: computed(() => count),
@@ -386,7 +370,6 @@ describe('define cache store', async () => {
 
     const App = {
       setup() {
-        const cache = useTestCache()
         const { count } = cache.getRefs(99)
 
         return {
@@ -400,11 +383,8 @@ describe('define cache store', async () => {
     const wrapper = mount(App, {})
     const wrapper2 = mount(App, {})
 
-    const cache = wrapper.vm.cache as ReturnType<typeof useTestCache>
-
     // @ts-expect-error
     expect(wrapper2.vm.count.value).toBe(1)
-    expect(cache.getUseCount()).toBe(2)
     expect(cache.ids()).toEqual([99])
     expect(wrapper.text()).toEqual('1')
   })
@@ -416,7 +396,7 @@ describe('define cache store', async () => {
       C: { name: 'Susan' },
     }
 
-    const useTestCache = defineCacheStore((id: string, { get }) => {
+    const cache = defineRecordStore((id: string, { get }) => {
 
       return {
         id: computed(() => id),
@@ -438,7 +418,6 @@ describe('define cache store', async () => {
         itemId: String,
       },
       setup(props: any) {
-        const cache = useTestCache()
 
         const { id, name, friend } = cache.getRefs(props.itemId)
 
@@ -469,7 +448,7 @@ describe('define cache store', async () => {
     })
   })
 
-  it('remove other cached values', async () => {
+  it('remove() other cached values', async () => {
     type Item = {
       id: string;
       name: string;
@@ -485,7 +464,7 @@ describe('define cache store', async () => {
       },
     ])
 
-    const useTestCache = defineCacheStore((id: string, { get, remove }) => {
+    const cache = defineRecordStore((id: string, { get, remove }) => {
 
       watch(data, (newValue) => {
         const exists = newValue.find((item) => item.id === id)
@@ -502,9 +481,7 @@ describe('define cache store', async () => {
           return exists?.name
         }),
       }
-    }, { autoMountAndUnMount: false, autoClearUnused: false })
-
-    const cache = useTestCache()
+    })
 
     expect(cache.get('A')).toEqual({
       id: 'A',
@@ -528,31 +505,24 @@ describe('define cache store', async () => {
   })
 
   it('can use has() and getUseCount() internally', async () => {
-    const useTestCache = defineCacheStore((id: string, { has, getUseCount }) => {
+    const cache = defineRecordStore((id: string, { has }) => {
       return {
         id: computed(() => id),
         hasA: computed(() => has('A')),
         hasB: computed(() => has('B')),
-        count: computed(() => getUseCount()),
       }
-    }, { autoMountAndUnMount: false, autoClearUnused: false })
-
-    const cache = useTestCache()
+    })
 
     expect(toValue(cache.get('A'))).toEqual({
       id: 'A',
       hasA: true,
       hasB: false,
-      count: 0,
     })
-
-    cache.mount()
 
     expect(toValue(cache.get('B'))).toEqual({
       id: 'B',
       hasA: true,
       hasB: true,
-      count: 1,
     })
   })
 })

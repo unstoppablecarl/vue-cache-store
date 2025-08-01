@@ -1,54 +1,56 @@
-import { watchEffect } from 'vue'
-import { type CacheStore, defineCacheStore } from './defineCacheStore'
-import { makeOptionsHelper, type Options } from './storeOptions'
+import { type Reactive, reactive, type ToRefs } from 'vue'
+import { reactiveToRefs } from './reactiveToRefs'
 
-export function watchRecordStore<
-  C extends (record: REC, context: CacheStore<ReturnType<C>>) => ReturnType<C>,
-  G extends (id: any) => ReturnType<G>,
-  REC = object & ReturnType<G>,
->
-(
-  getRecord: G,
-  create: C,
-  defaultOptions?: Options,
-) {
-  return defineRecordStore<C, G, REC>(getRecord as G, create as C, defaultOptions)()
+export interface RecordStore<T> {
+  // get cached ids
+  ids(): any[],
+  // get reactive object
+  get(id: any): Reactive<T>,
+  // get refs wrapped object like pinia's storeToRefs(useMyStore())
+  getRefs(id: any): ToRefs<Reactive<T>>,
+  // check if id is cached
+  has(id: any): boolean,
+  // remove cached id
+  remove(id: any): void,
+  // clear all cache ids
+  clear(): void,
 }
 
-const optionsHelper = makeOptionsHelper({
-  autoMountAndUnMount: false,
-  autoClearUnused: false,
-})
-
-defineRecordStore.setGlobalDefaultOptions = optionsHelper.set
-defineRecordStore.getGlobalDefaultOptions = optionsHelper.get
-defineRecordStore.resetGlobalDefaultOptions = optionsHelper.reset
+export type GenericRecordStore = ReturnType<typeof defineRecordStore>
 
 export function defineRecordStore<
-  C extends (record: REC, context: CacheStore<ReturnType<C>>) => ReturnType<C>,
-  G extends (id: any) => ReturnType<G>,
-  REC = object & ReturnType<G>,
->
-(
-  getRecord: G,
-  create: C,
-  defaultOptions?: Options,
-) {
-  const creatorFunction = (id: any, context: CacheStore<ReturnType<C>>) => {
-    watchEffect(() => {
-      if (!getRecord(id)) {
-        context.remove(id)
-      }
-    })
+  C extends (id: any, context: RecordStore<ReturnType<C>>) => ReturnType<C>
+>(creatorFunction: C) {
+  type RecordStoreResult = RecordStore<ReturnType<C>>
 
-    const record = getRecord(id)
-    if (!record) {
-      throw new Error(`defineRecordStore(): Record id "${id}" not found.`)
+  const cache = new Map<any, Reactive<ReturnType<C>>>()
+
+  function get(id: any): Reactive<ReturnType<C>> {
+    let result = cache.get(id)
+    if (result) {
+      return result
     }
-    return create(record as REC, context)
+
+    const object = creatorFunction(id, context) as object
+    result = reactive(object) as Reactive<ReturnType<C>>
+    cache.set(id, result)
+
+    return result
   }
 
-  const options = optionsHelper.merge(defaultOptions)
+  const getRefs = (id: any) => {
+    const obj = get(id) as Reactive<ReturnType<C>>
+    return reactiveToRefs(obj)
+  }
 
-  return defineCacheStore(creatorFunction, options)
+  const context: RecordStoreResult = {
+    ids: () => [...cache.keys()],
+    get,
+    getRefs,
+    has: (id: any) => cache.has(id),
+    remove: (id: any) => cache.delete(id),
+    clear: () => cache.clear(),
+  }
+
+  return context
 }

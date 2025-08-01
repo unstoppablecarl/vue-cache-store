@@ -1,19 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { defineRecordStore, watchRecordStore } from '../src'
+import { watchRecordStore } from '../src'
 import { createPinia, defineStore, setActivePinia, type StoreDefinition } from 'pinia'
 import { computed, nextTick, ref, toRefs, toValue } from 'vue'
 import { type ExtendedPeopleStore, type Person, usePeople } from './helpers/people'
 
 describe('pinia integration', async () => {
-
-  it('default options', async () => {
-    expect(
-      defineRecordStore.getGlobalDefaultOptions(),
-    ).toEqual({
-      autoMountAndUnMount: false,
-      autoClearUnused: false,
-    })
-  })
 
   it('test readme example', async () => {
     type Person = {
@@ -34,7 +25,7 @@ describe('pinia integration', async () => {
       }
     }
 
-    const usePersonInfo = defineRecordStore(
+    const personInfo = watchRecordStore(
       (id: number) => getPerson(id),
       (record: Person) => {
         const { id: personId, name } = toRefs(record)
@@ -46,8 +37,6 @@ describe('pinia integration', async () => {
         }
       },
     )
-
-    const personInfo = usePersonInfo()
 
     const person = personInfo.get(99)
 
@@ -249,5 +238,5 @@ async function test_store(store: ExtendedPeopleStore) {
   expect(store.getInfo(id2)).toEqual({ id: id2, name: 'jennifer', nameLength: 8 })
   expect(store.personInfo.has(id2)).toEqual(true)
 
-  expect(() => store.getInfo(id)).toThrowError(`defineRecordStore(): Record id "${id}" not found.`)
+  expect(() => store.getInfo(id)).toThrowError(`watchRecordStore(): Record id "${id}" not found.`)
 }
