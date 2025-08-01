@@ -18,7 +18,7 @@ export type RecordStore<T extends object, ID = NonNullable<any>> = {
   forEach(callbackFunction: (value: Reactive<T>, key: ID) => void): void;
 }
 
-export type GenericRecordStore<> = ReturnType<typeof makeRecordStore>
+export type GenericRecordStore = ReturnType<typeof makeRecordStore>
 
 export function makeRecordStore<
   C extends (id: any, context: RecordStore<object & ReturnType<C>, Parameters<C>[0]>) => object & ReturnType<C>,
