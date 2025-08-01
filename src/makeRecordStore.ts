@@ -21,9 +21,9 @@ export type RecordStore<T extends object, ID = NonNullable<any>> = {
 export type GenericRecordStore = ReturnType<typeof makeRecordStore>
 
 export function makeRecordStore<
-  ID extends NonNullable<any>,
-  C extends (id: ID, context: RecordStore<object & ReturnType<C>, ID>) => object & ReturnType<C>,
+  C extends (id: NonNullable<any>, context: RecordStore<object & ReturnType<C>, Parameters<C>[0]>) => object & ReturnType<C>,
 >(creatorFunction: C) {
+  type ID = Parameters<C>[0]
   type Result = object & ReturnType<C>
   type ReactiveResult = Reactive<Result>
 
