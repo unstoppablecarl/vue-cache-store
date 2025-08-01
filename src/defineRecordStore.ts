@@ -1,65 +1,63 @@
 import { type Reactive, reactive, type ToRefs } from 'vue'
 import { reactiveToRefs } from './reactiveToRefs'
 
-export interface RecordStore<T> {
+export type RecordStore<T extends object, ID = NonNullable<any>> = {
   // get cached ids
   ids(): any[],
   // get reactive object
-  get(id: any): Reactive<T>,
+  get(id: ID): Reactive<T>,
   // get refs wrapped object like pinia's storeToRefs(useMyStore())
-  getRefs(id: any): ToRefs<Reactive<T>>,
+  getRefs(id: ID): ToRefs<Reactive<T>>,
   // check if id is cached
-  has(id: any): boolean,
+  has(id: ID): boolean,
   // remove cached id
-  remove(id: any): void,
+  remove(id: ID): void,
   // clear all cache ids
   clear(): void,
+  // loop over each cached item
+  forEach(callbackFunction: (value: Reactive<T>, key: ID, map: Map<ID, Reactive<T>>) => void, thisArg?: any): void;
 }
 
-export type GenericRecordStore = ReturnType<typeof defineRecordStore>
+export type GenericRecordStore<> = ReturnType<typeof defineRecordStore>
 
 export function defineRecordStore<
-  O extends object,
-  C extends (id: any, context: RecordStore<ReturnType<C>>) => O
+  C extends (id: any, context: RecordStore<object & ReturnType<C>, Parameters<C>[0]>) => object & ReturnType<C>,
 >(creatorFunction: C) {
-  type Result = Reactive<ReturnType<C>>
+  type ID = Parameters<C>[0]
+  type Result = object & ReturnType<C>
+  type ReactiveResult = Reactive<Result>
 
-  const cache = new Map<any, Result>()
+  const cache = new Map<ID, ReactiveResult>()
 
-  function get(id: any): Result {
+  const get = (id: ID): ReactiveResult => {
     let result = cache.get(id)
     if (result) {
       return result
     }
 
     const object = creatorFunction(id, context)
-    result = reactive(object) as Result
+    result = reactive(object) as ReactiveResult
     cache.set(id, result)
 
     return result
   }
 
-  const getRefs = (id: any) => {
-    const obj = get(id) as Result
+  const getRefs = (id: ID) => {
+    const obj = get(id) as ReactiveResult
     return reactiveToRefs(obj)
   }
 
-  const context: RecordStore<ReturnType<C>> = {
+  const context: RecordStore<Result, ID> = {
     ids: () => [...cache.keys()],
     get,
     getRefs,
-    has: (id: any) => cache.has(id),
-    remove: (id: any) => cache.delete(id),
+    has: (id: ID) => cache.has(id),
+    remove: (id: ID) => cache.delete(id),
     clear: () => cache.clear(),
+    forEach: (callbackFunction: (value: ReactiveResult, key: ID, map: Map<ID, ReactiveResult>) => void, thisArg?: any) => {
+      cache.forEach(callbackFunction, thisArg)
+    }
   }
 
   return context
 }
-
-const c = defineRecordStore(() => {
-  return {
-    foo: 'bar',
-  }
-})
-
-const z = c.get(99)

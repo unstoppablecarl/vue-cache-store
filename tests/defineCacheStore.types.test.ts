@@ -43,9 +43,9 @@ describe('defineCacheStore() types', async () => {
   it('type CacheStore', () => {
     let called = 0
 
-    function creatorFunction(id: number, context: RecordStore<Item>) {
+    function creatorFunction(id: number, context: RecordStore<Item, number>) {
       called++
-      expectTypeOf(context).toEqualTypeOf<RecordStore<Item>>()
+      expectTypeOf(context).toEqualTypeOf<RecordStore<Item, number>>()
       return {
         id,
         name: 'susan',
@@ -54,9 +54,9 @@ describe('defineCacheStore() types', async () => {
 
     const cache = defineRecordStore(creatorFunction)
 
-    expectTypeOf(cache).toEqualTypeOf<RecordStore<Item>>()
+    expectTypeOf(cache).toEqualTypeOf<RecordStore<Item, number>>()
 
-    cache.get('asd')
+    cache.get(99)
     expect(called).toEqual(1)
   })
 })

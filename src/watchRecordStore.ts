@@ -2,15 +2,17 @@ import { watchEffect } from 'vue'
 import { defineRecordStore, type RecordStore } from './defineRecordStore'
 
 export function watchRecordStore<
-  C extends (record: REC, context: RecordStore<ReturnType<C>>) => ReturnType<C>,
-  G extends (id: any) => ReturnType<G>,
-  REC = object & ReturnType<G>,
+  G extends (id: any) => object & ReturnType<G> | undefined,
+  C2 extends (record: object & NonNullable<ReturnType<G>>, context: RecordStore<object & ReturnType<C2>, Parameters<G>[0]>) => object & ReturnType<C2>,
 >
 (
   getRecord: G,
-  create: C,
+  create: C2,
 ) {
-  const creatorFunction = (id: any, context: RecordStore<ReturnType<C>>) => {
+  type ID = Parameters<G>[0]
+  type Result = RecordStore<object & ReturnType<typeof create>, ID>
+
+  const creatorFunction = (id: ID, context: Result) => {
     watchEffect(() => {
       if (!getRecord(id)) {
         context.remove(id)
@@ -21,8 +23,8 @@ export function watchRecordStore<
     if (!record) {
       throw new Error(`watchRecordStore(): Record id "${id}" not found.`)
     }
-    return create(record as REC, context)
+    return create(record, context)
   }
 
-  return defineRecordStore<C>(creatorFunction as C)
+  return defineRecordStore<typeof creatorFunction>(creatorFunction)
 }

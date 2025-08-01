@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defineRecordStore } from '../src'
 import { mount } from '@vue/test-utils'
 import { computed, nextTick, reactive, ref, toRef, toValue, watch } from 'vue'
+import type { RecordStore } from '../types'
 
 describe('define cache store', async () => {
 
@@ -249,7 +250,7 @@ describe('define cache store', async () => {
       return data.value.find((item) => item.id === id) as Item
     }
 
-    const cache = defineRecordStore((id) => {
+    const cache = defineRecordStore((id: string) => {
       const item = findItem(id) as Item
       return {
         id: ref(id),
@@ -261,7 +262,7 @@ describe('define cache store', async () => {
       props: {
         cacheId: String,
       },
-      setup(props: { cacheId: Number }) {
+      setup(props: { cacheId: string }) {
         const cacheId = computed(() => props.cacheId)
         const comp = computed(() => cache.get(cacheId.value))
         const compRefs = computed(() => cache.getRefs(cacheId.value))
@@ -396,7 +397,7 @@ describe('define cache store', async () => {
       C: { name: 'Susan' },
     }
 
-    const cache = defineRecordStore((id: string, { get }) => {
+    const cache = defineRecordStore((id: string, { get }: RecordStore<any, string>) => {
 
       return {
         id: computed(() => id),
