@@ -6,12 +6,15 @@ describe('define cache store', async () => {
 
   it('only run once', async () => {
     const count = ref(0)
-    const cache = makeRecordStore((id) => {
+    const cache = makeRecordStore((id: number) => {
       count.value++
       return {
         count: computed(() => count),
       }
     })
+
+    expect(cache.get(99).count.value).toBe(1)
+    expect(cache.ids()).toEqual([99])
 
     expect(cache.get(99).count.value).toBe(1)
     expect(cache.ids()).toEqual([99])
