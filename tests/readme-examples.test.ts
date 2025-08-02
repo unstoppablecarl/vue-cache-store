@@ -114,7 +114,7 @@ describe('readme examples', async () => {
       }])
       const peopleIdIncrement = ref(0)
 
-      const getPerson = (id: number) => people.value.find(person => person.id === id)
+      const find = (id: number) => people.value.find(person => person.id === id)
       const add = (name: string) => {
         const id = peopleIdIncrement.value++
         people.value.push({ id, name })
@@ -127,7 +127,7 @@ describe('readme examples', async () => {
         }
       }
       const update = (id: number, name: string) => {
-        const item = getPerson(id)
+        const item = find(id)
         if (!item) {
           throw new Error(`Item "${id}" not found`)
         }
@@ -136,15 +136,14 @@ describe('readme examples', async () => {
       }
 
       const personInfo = watchRecordStore(
-        (id: number) => getPerson(id),
+        (id: number) => find(id),
         (record: Person) => {
-          const person = computed(() => record)
-          const { id: personId, name } = toRefs(record)
+          const { name } = toRefs(record)
 
           return {
-            id: personId,
+            id: computed(() => record.id),
             name,
-            nameLength: computed(() => person.value?.name.length || 0),
+            nameLength: computed(() => name.value.length || 0),
           }
         },
       )
@@ -152,9 +151,8 @@ describe('readme examples', async () => {
       return {
         people,
         personInfo,
-        getPerson,
-        getInfo: (id: number) => personInfo.get(id),
-        getInfoRefs: (id: number) => personInfo.getRefs(id),
+        get: personInfo.get,
+        getRefs: personInfo.getRefs,
         add,
         remove,
         update,
@@ -166,7 +164,7 @@ describe('readme examples', async () => {
 
     const personStore = usePersonStore()
 
-    const person = personStore.getInfo(99)
+    const person = personStore.get(99)
 
     expect(person.name).toBe('Jim')
     expect(person.nameLength).toBe(3)
@@ -176,14 +174,19 @@ describe('readme examples', async () => {
     expect(person.name).toBe('Jess')
     expect(person.nameLength).toBe(4)
 
-    const { name } = personStore.getInfoRefs(99)
+    const { id, name } = personStore.getRefs(99)
     expect(name.value).toBe('Jess')
+
+    expect(() => {
+      id.value = 99
+    }).toThrowError(`'set' on proxy: trap returned falsish for property 'id'`)
 
     name.value = 'Ricky'
     expect(name.value).toBe('Ricky')
 
-    const samePerson = personStore.getPerson(99) as Person
+    const samePerson = personStore.get(99)
     expect(samePerson.name).toBe('Ricky')
+
 
     personStore.remove(99)
     expect(toValue(personStore.people)).toEqual([])
@@ -191,5 +194,6 @@ describe('readme examples', async () => {
     await nextTick()
     expect(personStore.personInfo.has(99)).toBe(false)
     expect(personStore.personInfo.ids()).toEqual([])
+
   })
 })

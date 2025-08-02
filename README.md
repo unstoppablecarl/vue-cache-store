@@ -248,7 +248,7 @@ export const usePersonStore = defineStore('people', () => {
   }])
   const peopleIdIncrement = ref(0)
 
-  const getPerson = (id: number) => people.value.find(person => person.id === id)
+  const find = (id: number) => people.value.find(person => person.id === id)
   const add = (name: string) => {
     const id = peopleIdIncrement.value++
     people.value.push({ id, name })
@@ -270,15 +270,15 @@ export const usePersonStore = defineStore('people', () => {
   }
 
   const personInfo = watchRecordStore(
-    (id: number) => getPerson(id),
+    (id: number) => find(id),
     (record: Person) => {
-      const person = computed(() => record)
       const { name } = toRefs(record)
 
       return {
-        id: computed(() => person.id),
+        // readonly
+        id: computed(() => record.id),
         name,
-        nameLength: computed(() => person.value?.name.length || 0),
+        nameLength: computed(() => name.value.length || 0),
       }
     }
   )
@@ -287,8 +287,8 @@ export const usePersonStore = defineStore('people', () => {
     people,
     personInfo,
     getPerson,
-    getInfo: (id: number) => personInfo.get(id),
-    getInfoRefs: (id: number) => personInfo.getRefs(id),
+    get: personInfo.get,
+    getRefs: personInfo.getRefs,
     add,
     remove,
     update,
@@ -299,7 +299,7 @@ export const usePersonStore = defineStore('people', () => {
 const personStore = usePersonStore()
 
 // re-usable composite reactive record
-const person = personStore.getInfo(99)
+const person = personStore.get(99)
 person.name // 'Jim'
 person.nameLength // 3
 
@@ -308,12 +308,12 @@ person.name // 'Jess'
 person.nameLength // 4
 
 // dereference reactive to refs
-const { name } = personStore.getInfoRefs(99)
+const { name } = personStore.getRefs(99)
 name.value // 'Jess'
 name.value = 'Ricky'
 name.value // 'Ricky'
 
-const samePerson = personStore.getPerson(99) as Person
+const samePerson = personStore.get(99)
 samePerson.name // 'Ricky'
 
 // source record is removed
