@@ -1,5 +1,5 @@
 import type { Store } from 'pinia'
-import type { CacheStore } from '../../src'
+import type { RecordStore } from '../../src'
 import { ref } from 'vue'
 
 export type Person = {
@@ -15,7 +15,7 @@ export type PeopleStore = ReturnType<typeof usePeople>
 
 export type ExtendedPeopleStore = Store<string, PeopleStore & {
   getInfo: (id: number) => PersonInfo,
-  personInfo: CacheStore<Person>
+  personInfo: RecordStore<number, Person>
 }>
 export const usePeople = () => {
   const people = ref<Person[]>([])

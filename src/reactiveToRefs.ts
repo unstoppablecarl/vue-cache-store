@@ -1,6 +1,6 @@
-// based on pinia storeToRefs()
 import { computed, isReactive, isRef, toRaw, toRef, type ToRefs } from 'vue'
 
+// based on pinia storeToRefs()
 export function reactiveToRefs<T extends object>(obj: T) {
   const rawStore = toRaw(obj)
   const refs = {}
