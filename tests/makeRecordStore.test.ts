@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { makeRecordStore, type RecordStore } from '../src'
-import { computed, nextTick, ref, watch } from 'vue'
+import { makeRecordStore } from '../src'
+import { computed, type ComputedRef, nextTick, ref, watch } from 'vue'
 
 describe('define cache store', async () => {
 
@@ -21,18 +21,13 @@ describe('define cache store', async () => {
   })
 
   it('get other cached values', async () => {
-
-    type Item = {
-      name: string
-    }
-
     const data: { [K: string]: { name: string } } = {
       A: { name: 'Jim' },
       B: { name: 'Lisa' },
       C: { name: 'Susan' },
     }
 
-    const cache = makeRecordStore((id: string, { get }: RecordStore<Item, string>) => {
+    const cache = makeRecordStore<string, any>((id: string, { get }) => {
       return {
         id: computed(() => id),
         name: computed(() => data[id].name),
@@ -127,7 +122,14 @@ describe('define cache store', async () => {
   })
 
   it('can use has() ids() forEach()', async () => {
-    const cache = makeRecordStore((id: string, { has, ids }) => {
+    type Item = {
+      id: ComputedRef<string>,
+      ids: ComputedRef<string[]>,
+      hasA: ComputedRef<boolean>,
+      hasB: ComputedRef<boolean>,
+    }
+
+    const cache = makeRecordStore<string, Item>((id: string, { has, ids }) => {
       return {
         id: computed(() => id),
         ids: computed(() => ids()),
@@ -162,7 +164,6 @@ describe('define cache store', async () => {
         },
       },
     ])
-
 
     const itemARefs = cache.getRefs('A')
     expect(itemARefs.id.value).toEqual('A')

@@ -1,32 +1,8 @@
-import { describe, expect, expectTypeOf, it } from 'vitest'
+import { describe, expectTypeOf, it } from 'vitest'
 import type { Reactive, ToRefs } from 'vue'
-import { makeRecordStore, type GenericRecordStore, type RecordStore } from '../src'
-
-type Item = {
-  id: number,
-  name: string,
-}
+import { type GenericRecordStore, makeRecordStore, type RecordStore } from '../src'
 
 describe('defineCacheStore() types', async () => {
-  it('check readme type explanation is accurate', async () => {
-    type CustomCacheStore = {
-      ids(): any[],
-      get(id: any): Reactive<Item>,
-      getRefs(id: any): ToRefs<Reactive<Item>>,
-      has(id: any): boolean,
-      remove(id: any): void,
-      clear(): void,
-    }
-
-    const cache: CustomCacheStore = makeRecordStore((id: number, context: RecordStore<Item>): Item => {
-      return {
-        id,
-        name: 'susan',
-      }
-    })
-
-    expectTypeOf(cache).toEqualTypeOf<CustomCacheStore>()
-  })
 
   it('type GenericCacheStore', async () => {
     function creatorFunction(id: number) {
@@ -40,23 +16,85 @@ describe('defineCacheStore() types', async () => {
     expectTypeOf(store).toEqualTypeOf<GenericRecordStore>()
   })
 
-  it('type CacheStore', () => {
-    let called = 0
+  it('makeRecordStore() types: id number', () => {
 
-    function creatorFunction(id: number, context: RecordStore<Item, number>) {
-      called++
-      expectTypeOf(context).toEqualTypeOf<RecordStore<Item, number>>()
+    type ItemInfo = {
+      id: number,
+      name: string,
+      context: RecordStore<number, ItemInfo>
+    }
+
+    const cache = makeRecordStore<number, ItemInfo>((id, context) => {
       return {
         id,
         name: 'susan',
+        context,
       }
+    })
+
+    expectTypeOf(cache).toEqualTypeOf<RecordStore<number, ItemInfo>>()
+    expectTypeOf<Parameters<typeof cache.get>[0]>().toEqualTypeOf<number>()
+    expectTypeOf<Parameters<typeof cache.getRefs>[0]>().toEqualTypeOf<number>()
+    expectTypeOf<Parameters<typeof cache.has>[0]>().toEqualTypeOf<number>()
+    expectTypeOf<Parameters<typeof cache.remove>[0]>().toEqualTypeOf<number>()
+    expectTypeOf(cache.get(99)).toEqualTypeOf<ItemInfo>()
+    expectTypeOf(cache.get(99)).toEqualTypeOf<Reactive<ItemInfo>>()
+    expectTypeOf<ReturnType<typeof cache.get>>().toEqualTypeOf<ItemInfo>()
+    expectTypeOf<ReturnType<typeof cache.getRefs>>().toEqualTypeOf<ToRefs<Reactive<ItemInfo>>>()
+    expectTypeOf<ReturnType<typeof cache.ids>>().toEqualTypeOf<number[]>()
+
+    const context = cache.get(99).context
+    expectTypeOf(context).toEqualTypeOf<RecordStore<number, ItemInfo>>()
+    expectTypeOf<Parameters<typeof context.get>[0]>().toEqualTypeOf<number>()
+    expectTypeOf<Parameters<typeof context.getRefs>[0]>().toEqualTypeOf<number>()
+    expectTypeOf<Parameters<typeof context.has>[0]>().toEqualTypeOf<number>()
+    expectTypeOf<Parameters<typeof context.remove>[0]>().toEqualTypeOf<number>()
+    expectTypeOf(context.get(99)).toEqualTypeOf<ItemInfo>()
+    expectTypeOf(context.get(99)).toEqualTypeOf<Reactive<ItemInfo>>()
+    expectTypeOf<ReturnType<typeof context.get>>().toEqualTypeOf<ItemInfo>()
+    expectTypeOf<ReturnType<typeof context.getRefs>>().toEqualTypeOf<ToRefs<Reactive<ItemInfo>>>()
+    expectTypeOf<ReturnType<typeof context.ids>>().toEqualTypeOf<number[]>()
+
+  })
+
+  it('makeRecordStore() types: id string', () => {
+
+    type ItemInfo = {
+      id: string,
+      name: string,
+      context: RecordStore<string, ItemInfo>
     }
 
-    const cache = makeRecordStore(creatorFunction)
+    const cache = makeRecordStore<string, ItemInfo>((id, context) => {
+      return {
+        id,
+        name: 'susan',
+        context,
+      }
+    })
 
-    expectTypeOf(cache).toEqualTypeOf<RecordStore<Item, number>>()
+    expectTypeOf(cache).toEqualTypeOf<RecordStore<string, ItemInfo>>()
+    expectTypeOf<Parameters<typeof cache.get>[0]>().toEqualTypeOf<string>()
+    expectTypeOf<Parameters<typeof cache.getRefs>[0]>().toEqualTypeOf<string>()
+    expectTypeOf<Parameters<typeof cache.has>[0]>().toEqualTypeOf<string>()
+    expectTypeOf<Parameters<typeof cache.remove>[0]>().toEqualTypeOf<string>()
+    expectTypeOf(cache.get('A')).toEqualTypeOf<ItemInfo>()
+    expectTypeOf(cache.get('A')).toEqualTypeOf<Reactive<ItemInfo>>()
+    expectTypeOf<ReturnType<typeof cache.get>>().toEqualTypeOf<ItemInfo>()
+    expectTypeOf<ReturnType<typeof cache.getRefs>>().toEqualTypeOf<ToRefs<Reactive<ItemInfo>>>()
+    expectTypeOf<ReturnType<typeof cache.ids>>().toEqualTypeOf<string[]>()
 
-    cache.get(99)
-    expect(called).toEqual(1)
+    const context = cache.get('A').context
+    expectTypeOf(context).toEqualTypeOf<RecordStore<string, ItemInfo>>()
+    expectTypeOf<Parameters<typeof context.get>[0]>().toEqualTypeOf<string>()
+    expectTypeOf<Parameters<typeof context.getRefs>[0]>().toEqualTypeOf<string>()
+    expectTypeOf<Parameters<typeof context.has>[0]>().toEqualTypeOf<string>()
+    expectTypeOf<Parameters<typeof context.remove>[0]>().toEqualTypeOf<string>()
+    expectTypeOf(context.get('A')).toEqualTypeOf<ItemInfo>()
+    expectTypeOf(context.get('A')).toEqualTypeOf<Reactive<ItemInfo>>()
+    expectTypeOf<ReturnType<typeof context.get>>().toEqualTypeOf<ItemInfo>()
+    expectTypeOf<ReturnType<typeof context.getRefs>>().toEqualTypeOf<ToRefs<Reactive<ItemInfo>>>()
+    expectTypeOf<ReturnType<typeof context.ids>>().toEqualTypeOf<string[]>()
+
   })
 })

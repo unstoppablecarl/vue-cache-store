@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeRecordStore } from '../src'
 import { mount } from '@vue/test-utils'
-import { computed, nextTick, reactive, ref, toRef, toValue, watch } from 'vue'
-import type { RecordStore } from '../types'
+import { computed, reactive, ref, toRef } from 'vue'
 
 describe('define cache store', async () => {
 

@@ -1,7 +1,7 @@
 import { type Reactive, reactive, type ToRefs } from 'vue'
 import { reactiveToRefs } from './reactiveToRefs'
 
-export type RecordStore<T extends object, ID = NonNullable<any>> = {
+export type RecordStore<ID extends NonNullable<any>, T extends object> = {
   // get cached ids
   ids(): ID[],
   // get reactive object
@@ -21,11 +21,10 @@ export type RecordStore<T extends object, ID = NonNullable<any>> = {
 export type GenericRecordStore = ReturnType<typeof makeRecordStore>
 
 export function makeRecordStore<
-  C extends (id: NonNullable<any>, context: RecordStore<object & ReturnType<C>, Parameters<C>[0]>) => object & ReturnType<C>,
->(creatorFunction: C) {
-  type ID = Parameters<C>[0]
-  type Result = object & ReturnType<C>
-  type ReactiveResult = Reactive<Result>
+  ID extends NonNullable<any>,
+  T extends object,
+>(creatorFunction: (id: ID, context: RecordStore<ID, T>) => T) {
+  type ReactiveResult = Reactive<T>
 
   const cache = new Map<ID, ReactiveResult>()
 
@@ -47,7 +46,7 @@ export function makeRecordStore<
     return reactiveToRefs(obj)
   }
 
-  const context: RecordStore<Result, ID> = {
+  const context: RecordStore<ID, T> = {
     ids: () => [...cache.keys()],
     get,
     getRefs,

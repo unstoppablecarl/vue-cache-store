@@ -8,285 +8,217 @@ Dynamically create, re-use, and destroy [Pinia](https://pinia.vuejs.org/) like s
 ## Primary Use Case
 When using non-trivial derived reactive objects in multiple components.
 
-### Generic Vue example
-
+⭐️ Examples in this readme reference this case when it has `import { /* ... */ } from 'person-data.ts'`
 ```ts
 // person-data.ts
-import { computed, ref, reactive } from 'vue'
+import { computed, ref, reactive, type Reactive } from 'vue'
 
 type Person = {
   id: number,
-  name: string,
+  firstName: string,
+  lastName: string,
 }
 
-export const people = ref<Person[]>([{
+type PersonInfo = {
+  id: ComputedRef<number>,
+  firstName: Ref<string>,
+  lastName: Ref<string>,
+  fullName: ComputedRef<string>,
+}
+
+const people = ref<Person[]>([{
   id: 99,
-  firstName: 'Jim',
-  lastName: 'Kirk'
+  firstName: 'Bobby',
+  lastName: 'Testerson'
 }])
+
 export const getPerson = (id: number) => people.value.find(person => person.id === id)
-
-export const getPersonInfo = (person: Person) => {
-  // 🧠 imagine this is non-trivial and complicated 🧠
-  const firstName = computed(() => person.firstName)
-  const lastName = computed(() => person.lastName)
-  const fullName = computed(() => firstName.value + ' ' + lastName.value)
-  
-  return reactive({
-    id: computed(() => id),
-    firstName,
-    lastName,
-    fullName,
-  })
-}
-```
-
-```ts
-// in multiple components
-import { getPerson, getPersonInfo } from 'person-data.ts'
-
-const person = getPerson(99)
-const info = getPersonInfo(person)
-// each time getPersonInfo() is called 
-// it is re-run and creates redundant copies of its info object
-```
-
-### Vue Cache Store Solution
-Reusable non-trivial computed/reactive objects in multiple components.
-
-```ts 
-// person-info.ts
-import { computed } from 'vue'
-import { watchRecordStore } from 'vue-cache-store'
-import { getPerson, getPersonInfo } from 'person-data.ts'
-
-export const personInfo = watchRecordStore(
-  // record watcher
-  // auto clears cached object if returns falsy
-  (id: number) => getPerson(id),
-  // cached object creator
-  (person: Person) => getPersonInfo(person),
-)
-```
-
-```ts
-// inside multiple components
-import { personInfo } from 'person-info.ts'
-
-// returns reactive object
-const reactivePerson = personInfo.get(id)
-// ❌ dereferencing reactive objects breaks them
-const { lastName } = personInfo.get(id)
-// ✅ use the getRefs() instead
-const { firstName, fullName } = personInfo.getRefs(id)
-
-const computedLastName = computed(() => personInfo.get(id).lastName)
-```
-
-## Usage
-
-### Define a Record Store
-Cache stores are designed to behave similar to [Pinia](https://pinia.vuejs.org/) stores. 
-The value returned by `usePersonCache().get(id)` can be used similar to a Pinia store.
-```ts
-// person-cache.ts
-import { makeRecordStore } from 'vue-cache-store'
-import { computed } from 'vue'
-
-// simplified data source
-const people = ref([{
-  id: 99,
-  firstName: 'Jim',
-  lastName: 'Kirk'
-}])
-
-const getPerson = (id: number) => people.value.find(person => person.id === id)
-
-export const usePersonCache = makeRecordStore((id) => {
-  const person = getPerson(id)
-  const firstName = computed(() => person.firstName)
-  const lastName = computed(() => person.lastName)
-  
-  return {
-    id: computed(() => id),
-    firstName,
-    lastName,
-    fullName: computed(() => firstName.value + ' ' + lastName.value)
-  }
-})
-```
-
-```vue
-// my-component.vue
-<script setup lang="ts">
-  import { computed, defineProps } from 'vue'
-  import { usePersonCache } from 'person-cache.ts'
-  
-  // define this in the root of the component setup function
-  const personCache = usePersonCache()
-  
-  const { id } = defineProps({
-    id: Number,
-  })
-
-  // returns reactive object
-  const reactivePerson = personCache.get(id)
-  // ❌ dereferencing reactive objects breaks them
-  const { lastName } = personCache.get(id)
-  // ✅ use the getRefs() instead
-  const { fullName } = personCache.getRefs(id)
-  
-  const computedLastName = computed(() => personCache.get(id).lastName)
-</script>
-<template>
-  {{reactivePerson.firstName}}
-  {{computedPerson.firstName}}	
-  {{computedLastName}}
-  {{fullName}}
-</template>
-```
-### Cache Store API
-
-```ts
-// person-cache.ts
-import { makeRecordStore } from 'vue-cache-store'
-import { type ToRefs, type Reactive} from 'vue'
-
-export const usePersonCache = makeRecordStore((id: number): Item => {
-  return {
-    id,
-    name: 'sue',
-    // ...
-  }
-})
-
-type Item = {
-  id: number,
-  name: string,
-  //...
-}
-
-// equivalent interface (not actual)
-type CacheStore = {
-  // get cached ids
-  ids(): any[],
-  // get reactive object
-  get(id: any): Reactive<Item>,
-  // get refs wrapped object like pinia's storeToRefs(useMyStore())
-  getRefs(id: any): ToRefs<Item>,
-  // check if id is cached
-  has(id: any): boolean,
-  // remove cached id
-  remove(id: any): void,
-  // get number of mounted components using this cache store
-  getUseCount(): number,
-  // clear all cache ids
-  clear(): void,
-  // increase use count by 1
-  mount(): void,
-  // decrease use count by 1
-  // if autoClearUnused option is true,
-  // calls clear(), clearing the whole store if count becomes 0
-  unMount(): void,
-}
-const cache: CacheStore = usePersonCache()
-
-const personInfo = cache.get(99)
-```
-
-### Cache Store Context
-The `context` argument is the current cache store instance.
-
-```ts
-// person-cache.ts
-import { makeRecordStore } from 'vue-cache-store'
-import { getRecordInfo } from 'record-info-getter'
-import { computed } from 'vue'
-
-export const usePersonCache = makeRecordStore((id, context: CacheStore) => {
-  const info = getRecordInfo(id)
-  const firstName = computed(() => info.firstName)
-  const lastName = computed(() => info.lastName)
-  const manager = context.get(info.managerId)
-  
-  return {
-    id: computed(() => id),
-    firstName,
-    lastName,
-    fullName: computed(() => firstName.value + ' ' + lastName.value),
-    manager,
-  }
-})
-```
-
-### Record Stores
-
-Designed to cache an object store based on a record object.
-
-#### `makeRecordStore()` 
-Internally calls and returns `makeRecordStore()`
-
-```ts
-// person-info.ts
-import { computed, ref } from 'vue'
-import { makeRecordStore } from 'vue-cache-store'
-
-// minimal example
-const people = ref([{
-  id: 99,
-  name: 'Jim',
-}])
-
-const getPerson = (id) => people.value.find(person => person.id === id)
-const removePerson = (id) => {
+export const removePerson = (id: number) => {
   const index = people.value.findIndex(person => person.id === id)
   if (index > -1) {
     people.value.splice(index, 1)
   }
 }
-// makeRecordStore() internally calls and returns makeRecordStore()
-export const usePersonInfo = makeRecordStore(
-  // record watcher
-  (id: number) => {
-    // this function is watched
-    // if the return value becomes falsy
-    // the cached object is removed automatically
-    return getPerson(id)
-  },
 
+export const getPersonInfo = (person: Person): PersonInfo => {
+  const { firstName, lastName } = toRefs(person)
+  
+  // 🧠 imagine this is non-trivial and complicated 🧠
+  return {
+    id: computed(() => person.id),
+    firstName,
+    lastName,
+    fullName: computed(() => firstName.value + ' ' + lastName.value),
+  }
+}
+```
+
+### Generic Example
+
+```vue
+// inside multiple vue components
+<script setup lang="ts">
+  import { getPerson, getPersonInfo } from 'person-data.ts'
+  import { computed, defineProps } from 'vue'
+
+  const { id } = defineProps({
+    id: Number,
+  })
+
+  const info = computed(() => {
+    const person = getPerson(id)
+    // each time getPersonInfo() is called 
+    // it is re-run and creates new copies of the info object
+    return getPersonInfo(person)
+  })
+</script>
+<template>
+  {{info.id}}
+  {{info.fullName}}
+  <input type="text" v-model="info.firstName"/>
+  <input type="text" v-model="info.lastName"/>
+</template>
+```
+
+### Vue Cache Store Solution
+
+```ts 
+// person-info.ts
+import { watchRecordStore } from 'vue-cache-store'
+// see person-data.ts above ⬆️
+import { getPerson, getPersonInfo, type Person, type PersonInfo } from 'person-data.ts'
+
+export const personInfo = watchRecordStore<number, Person, PersonInfo>(
+  // watches for reactive changes
+  // auto clears cached object if returns falsy
+  (id: number) => getPerson(id),
   // cached object creator
-  (record: Person) => {
-    // return value of this function is cached.
-    // even if used by multiple components
-    // it will not be called repeatedly
-    const { id: personId, name } = toRefs(record)
+  // re-uses result on subsequent calls
+  (person: Person) => getPersonInfo(person),
+)
+```
 
-    return {
-      id: personId,
-      name,
-      nameLength: computed(() => record.name.length || 0),
-    }
-  },
+```vue
+// inside multiple vue components
+<script setup lang="ts">
+  import { computed, defineProps } from 'vue'
+  import { personInfo } from 'person-info.ts'
+  
+  const { id } = defineProps({
+    id: Number,
+  })
+  
+  // returns reactive object
+  const reactivePerson = personInfo.get(id)
+  // ❌ dereferencing reactive objects breaks them
+  const { lastName } = personInfo.get(id)
+  // ✅ use the getRefs() instead
+  const { firstName, fullName } = personInfo.getRefs(id)
+
+  const computedLastName = computed(() => personInfo.get(id).lastName)
+</script>
+<template>
+  {{info.id}}
+  {{info.fullName}}
+  <input type="text" v-model="firstName"/>
+  <input type="text" v-model="lastName"/>
+</template>
+```
+
+## How It Works
+
+### Record Stores `makeRecordStore()`
+
+```ts
+// person-info.ts
+import { type ToRefs, type Reactive} from 'vue'
+import { makeRecordStore } from 'vue-cache-store'
+// see person-data.ts above ⬆️
+import { getPerson, getPersonInfo, type Person, type PersonInfo } from 'person-data.ts'
+
+// equivalent interface (not actual)
+type CacheStore = {
+  // get cached ids
+  ids(): number[],
+  // get reactive object like a pinia store
+  get(id: number): Reactive<PersonInfo>,
+  // get refs wrapped object like pinia's storeToRefs(useMyStore())
+  getRefs(id: number): ToRefs<Reactive<PersonInfo>>,
+  // check if id is cached
+  has(id: number): boolean,
+  // loop over each cache object
+  forEach(callbackFunction: (value: Reactive<PersonInfo>, key: number) => void): void;
+  // remove cached id
+  remove(id: number): void,
+  // clear all cache ids
+  clear(): void,
+}
+
+export const personInfo: CacheStore = makeRecordStore<number, ItemInfo>((id: number, context) => {
+  const person = getPerson(id)
+  
+  return getPersonInfo(person)
+})
+```
+
+### Record Store Context
+The `context` argument is the current record store instance.
+
+```ts
+// person-info.ts
+import { makeRecordStore } from 'vue-cache-store'
+
+export const personInfo = makeRecordStore<number, ItemInfo>((id: number, context: CacheStore) => {
+  const person = getPerson(id)
+
+  // 🧠 imagine a managerId property existed in the example above 🧠
+  const managerInfo = context.get(person.managerId)
+
+  return {
+    ...getPersonInfo(person),
+    manager: managerInfo,
+  }
+})
+```
+
+### Watch Record Stores `watchRecordStore()`
+
+```ts
+// person-info.ts
+import { watchRecordStore } from 'vue-cache-store'
+// see person-data.ts above ⬆️
+import { getPerson, removePerson, getPersonInfo, type Person, type PersonInfo } from 'person-data.ts'
+import { makeRecordStore } from './makeRecordStore'
+
+export const personInfo = watchRecordStore<number, Person, PersonInfo>(
+  // watches for reactive changes
+  // auto clears cached object if returns falsy
+  (id: number) => getPerson(id),
+  // cached object creator
+  // re-uses result on subsequent calls
+  (person: Person) => getPersonInfo(person),
 )
 
-const personInfo = usePersonInfo()
+// watchRecordStore() wraps makeRecordStore()
+// with behavior equivalent to the following:
+export const personInfoWatched = makeRecordStore((id: number) => {
+  const comp = computed(() => getRecord(id))
+  watch(comp, () => {
+    if (!comp.value) {
+      context.remove(id)
+    }
+  })
 
+  const record = comp.value
+  if (!record) {
+    throw new Error(`watchRecordStore(): Record id "${id}" not found.`)
+  }
+  return getPersonInfo(record)
+})
+
+// this allows the cached info object to be automatically cleared 
+// when the person object it is based on is removed
 const person = personInfo.get(99)
-person.name // 'Jim'
-person.nameLength // 3
-
-person.name = 'Jess'
-person.name // 'Jess'
-person.nameLength // 4
-
-// dereference reactive to refs
-const { name } = personInfo.getRefs(99)
-name.value // 'Jess'
-name.value = 'Ricky'
-name.value // 'Ricky'
-
-const samePerson = getPerson(99) as Person
-samePerson.name // 'Ricky'
 
 // source record is removed
 removePerson(99)
@@ -297,18 +229,6 @@ personInfo.has(99) // false
 personInfo.ids() // []
 ```
 
-#### `watchRecordStore()`
-```ts
-import { watchRecordStore } from 'vue-cache-store'
-
-export const personInfo = watchRecordStore(/* ... */)
-
-// watchRecordStore() internally does the following:
-const useInfo = makeRecordStore(/* ... */)()
-// with typing intact
-return useInfo()
-```
-
 #### Usage within a [Pinia](https://pinia.vuejs.org/) store
 
 ```ts
@@ -316,7 +236,6 @@ return useInfo()
 import { defineStore } from 'pinia'
 import { watchRecordStore } from 'vue-cache-store'
 
-// minimal example
 type Person = {
   id: number,
   name: string,
@@ -354,10 +273,10 @@ export const usePersonStore = defineStore('people', () => {
     (id: number) => getPerson(id),
     (record: Person) => {
       const person = computed(() => record)
-      const { id: personId, name } = toRefs(record)
+      const { name } = toRefs(record)
 
       return {
-        id: personId,
+        id: computed(() => person.id),
         name,
         nameLength: computed(() => person.value?.name.length || 0),
       }
@@ -405,116 +324,6 @@ await nextTick()
 personStore.personInfo.has(99) // false
 personStore.personInfo.ids() // []
 ```
-
-### Cache Store Options
-
-When defining a cache store the second argument is a default options object.
-
-| option                | description                                                                                                                                                                                           |
-|:----------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `autoMountAndUnMount` | If true, automatically tracks the number of mounted components using the cache store. <br> Mounting is tracked when calling in the root of a component. Example: `const personInfo = usePersonInfo()` |
-| `autoClearUnused`     | If true, when there are no longer any mounted components using a cache store it will be cleared.                                                                                                      |
-
-#### `makeRecordStore()` Options
-```ts
-// global default option values
-const options = {
-  autoMountAndUnMount: true,
-  autoClearUnused: true,
-}
-```
-#### `makeRecordStore()` Options Usage
-```ts
-// person-cache.ts
-import { makeRecordStore } from 'vue-cache-store'
-
-// set new global defaults for all stores created with makeRecordStore()
-makeRecordStore.setGlobalDefaultOptions({
-  autoMountAndUnMount: false,
-  autoClearUnused: false,
-})
-
-// defining a cache store with store default options overriding global defaults
-export const usePersonCache = makeRecordStore((id) => {
-  return {
-    // ...
-  }
-}, {
-  autoMountAndUnMount: false,
-  autoClearUnused: false,
-})
-
-// inside a component
-// overrides usePersonCache default options and makeRecordStore global defaults
-const personCache = usePersonCache({
-  autoMountAndUnMount: true,
-  autoClearUnused: false,
-})
-```
-
-#### `makeRecordStore()` Options
-The intended use case for record stores removes cache objects when their source has been removed.
-So its global defaults are different.
-```ts
-// global default option values
-const options = {
-  autoMountAndUnMount: false,
-  autoClearUnused: false,
-}
-```
-#### `makeRecordStore()` Options Usage
-
-```ts
-// person-record.ts
-import { makeRecordStore } from 'vue-cache-store'
-
-// set new global defaults for all stores created with makeRecordStore()
-makeRecordStore.setGlobalDefaultOptions({
-  autoMountAndUnMount: false,
-  autoClearUnused: false,
-})
-
-// defining a record store with store default options overriding global defaults
-export const usePersonRecord = makeRecordStore(
-  (id) => {
-    // ...
-  },
-  () => {
-    // ...
-  },
-  {
-    autoMountAndUnMount: false,
-    autoClearUnused: false,
-  },
-)
-
-// inside a component
-// overrides usePersonRecord default options and makeRecordStore global defaults
-const personCache = usePersonRecord({
-  autoMountAndUnMount: true,
-  autoClearUnused: false,
-})
-```
-#### `watchRecordStore()` Options
-`watchRecordStore()` calls `makeRecordStore()` internally so it uses the global default options `makeRecordStore()`
-```ts
-import { watchRecordStore } from 'vue-cache-store'
-
-// defining a record store with store default options overriding global defaults
-export const usePersonRecord = watchRecordStore(
-  (id) => {
-    // ...
-  },
-  () => {
-    // ...
-  },
-  {
-    autoMountAndUnMount: false,
-    autoClearUnused: false,
-  },
-)
-```
-
 
 ### API
 

@@ -15,7 +15,7 @@ export type PeopleStore = ReturnType<typeof usePeople>
 
 export type ExtendedPeopleStore = Store<string, PeopleStore & {
   getInfo: (id: number) => PersonInfo,
-  personInfo: RecordStore<Person>
+  personInfo: RecordStore<number, Person>
 }>
 export const usePeople = () => {
   const people = ref<Person[]>([])
