@@ -67,8 +67,8 @@ export const getPersonInfo = (person: Person): PersonInfo => {
 
   const info = computed(() => {
     const person = getPerson(id)
-    // each time getPersonInfo() is called 
-    // it is re-run and creates new copies of the info object
+    // ⚠️️ each time getPersonInfo() is called 
+    // ⚠️ it is re-run and creates new copies of the info object
     return getPersonInfo(person)
   })
 </script>
