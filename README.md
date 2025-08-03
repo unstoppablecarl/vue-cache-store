@@ -1,5 +1,6 @@
 # Vue Cache Store
-Dynamically create, re-use, and destroy [Pinia](https://pinia.vuejs.org/) like stores.
+
+Re-usable computed objects based on record objects.
 
 ## Installation
 
@@ -40,8 +41,16 @@ export const removePerson = (id: number) => {
   }
 }
 
-export const getPersonInfo = (person: Person): PersonInfo => {
-  const { firstName, lastName } = toRefs(person)
+const toComputedProperty = (obj: ComputedRef, key: string) => computed({
+  get: () => obj.value[key],
+  set: (v: string) => {
+    obj.value[key] = v
+  },
+})
+
+const getPersonInfo = (person: ComputedRef<Person>): PersonInfo => {
+  const firstName = toComputedProperty(person, 'firstName')
+  const lastName = toComputedProperty(person, 'lastName')
   
   // 🧠 imagine this is non-trivial and complicated 🧠
   return {
@@ -58,25 +67,23 @@ export const getPersonInfo = (person: Person): PersonInfo => {
 ```vue
 // inside multiple vue components
 <script setup lang="ts">
-  import { getPerson, getPersonInfo } from 'person-data.ts'
   import { computed, defineProps } from 'vue'
+  import { getPerson, getPersonInfo } from 'person-data.ts'
 
   const { id } = defineProps({
     id: Number,
   })
 
-  const info = computed(() => {
-    const person = getPerson(id)
-    // ⚠️️ each time getPersonInfo() is called 
-    // ⚠️ it is re-run and creates new copies of the info object
-    return getPersonInfo(person)
-  })
+  const person = computed(() => getPerson(id))
+  // ⚠️️ each time getPersonInfo() is called 
+  // ⚠️ it is re-run and creates new copies of the info object
+  const info = getPersonInfo(person)
 </script>
 <template>
   {{info.id}}
   {{info.fullName}}
-  <input type="text" v-model="info.firstName"/>
-  <input type="text" v-model="info.lastName"/>
+  <input type="text" v-model="info.firstName" />
+  <input type="text" v-model="info.lastName" />
 </template>
 ```
 
@@ -92,9 +99,10 @@ export const personInfo = watchRecordStore<number, Person, PersonInfo>(
   // watches for reactive changes
   // auto clears cached object if returns falsy
   (id: number) => getPerson(id),
-  // cached object creator
+  // person arg is a computed() wrapped result of the watcher function
+  // creates the cached object
   // re-uses result on subsequent calls
-  (person: Person) => getPersonInfo(person),
+  (person: ComputedRef<Person>) => getPersonInfo(person),
 )
 ```
 
@@ -181,43 +189,45 @@ export const personInfo = makeRecordStore<number, ItemInfo>((id: number, context
 })
 ```
 
-### Watch Record Stores `watchRecordStore()`
+### Watch Record Store `watchRecordStore()`
 
 ```ts
 // person-info.ts
+import { type ComputedRef } from 'vue'
 import { watchRecordStore } from 'vue-cache-store'
 // see person-data.ts above ⬆️
-import { getPerson, removePerson, getPersonInfo, type Person, type PersonInfo } from 'person-data.ts'
-import { makeRecordStore } from './makeRecordStore'
+import { getPerson, getPersonInfo, type Person, type PersonInfo, removePerson } from 'person-data.ts'
 
 export const personInfo = watchRecordStore<number, Person, PersonInfo>(
   // watches for reactive changes
   // auto clears cached object if returns falsy
   (id: number) => getPerson(id),
-  // cached object creator
+  // person arg is a computed() wrapped result of the watcher function
+  // creates the cached object
   // re-uses result on subsequent calls
-  (person: Person) => getPersonInfo(person),
+  (person: ComputedRef<Person>) => getPersonInfo(person),
 )
 
 // watchRecordStore() wraps makeRecordStore()
 // with behavior equivalent to the following:
 export const personInfoWatched = makeRecordStore((id: number) => {
-  const comp = computed(() => getRecord(id))
-  watch(comp, () => {
-    if (!comp.value) {
+  const person = computed(() => getRecord(id))
+
+  // this allows the cached info object to be automatically cleared 
+  // when the person object it is based on is removed
+  const watcher = watch(person, () => {
+    if (!person.value) {
       context.remove(id)
+      watcher.stop()
     }
   })
 
-  const record = comp.value
-  if (!record) {
+  if (!person.value) {
     throw new Error(`watchRecordStore(): Record id "${id}" not found.`)
   }
-  return getPersonInfo(record)
+  return getPersonInfo(person)
 })
 
-// this allows the cached info object to be automatically cleared 
-// when the person object it is based on is removed
 const person = personInfo.get(99)
 
 // source record is removed
@@ -233,8 +243,9 @@ personInfo.ids() // []
 
 ```ts
 // person-store.ts
+import type { ComputedRef } from 'vue'
 import { defineStore } from 'pinia'
-import { watchRecordStore } from 'vue-cache-store'
+import { watchRecordStore, toWritableComputed } from 'vue-cache-store'
 
 type Person = {
   id: number,
@@ -271,12 +282,11 @@ export const usePersonStore = defineStore('people', () => {
 
   const personInfo = watchRecordStore(
     (id: number) => find(id),
-    (record: Person) => {
-      const { name } = toRefs(record)
+    (record: ComputedRef<Person>) => {
+      const { name } = toWritableComputed(record)
 
       return {
-        // readonly
-        id: computed(() => record.id),
+        id: computed(() => record.value.id),
         name,
         nameLength: computed(() => name.value.length || 0),
       }
@@ -337,6 +347,21 @@ import { reactive } from 'vue'
 
 const item = reactive({foo: 'bar'})
 const { foo } = reactiveToRefs(item)
+```
+
+#### `toWritableComputed()`
+Helpful for allowing mutation of properties on a record while keeping its computed dependency on it.
+
+```ts
+import { toWritableComputed } from 'vue-cache-store'
+import { computed } from 'vue'
+
+const obj = ref({ a: '1', b: '2' })
+
+const comp = computed(() => obj.value)
+const { a, b } = toWritableComputed(comp)
+
+a.value = 'something'
 ```
 
 ## Building

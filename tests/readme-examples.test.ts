@@ -1,12 +1,17 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { computed, type ComputedRef, nextTick, type Reactive, type Ref, ref, toRefs, type ToRefs, toValue } from 'vue'
+import {
+  computed,
+  type ComputedRef,
+  nextTick,
+  type Reactive,
+  ref,
+  type ToRefs,
+  toValue,
+  type WritableComputedRef,
+} from 'vue'
 import { makeRecordStore, type RecordStore, watchRecordStore } from '../src'
 import { createPinia, defineStore, setActivePinia } from 'pinia'
-
-type Item = {
-  id: number,
-  name: string,
-}
+import { toWritableComputed } from '../src/toWritableComputed'
 
 describe('readme examples', async () => {
   it('person data', async () => {
@@ -19,24 +24,33 @@ describe('readme examples', async () => {
 
     type PersonInfo = {
       id: ComputedRef<number>,
-      firstName: Ref<string>,
-      lastName: Ref<string>,
+      firstName: WritableComputedRef<string>,
+      lastName: WritableComputedRef<string>,
       fullName: ComputedRef<string>,
     }
 
     const people = ref<Person[]>([{
       id: 99,
-      firstName: 'Jim',
-      lastName: 'Kirk',
+      firstName: 'Bobby',
+      lastName: 'Testerson',
     }])
     const getPerson = (id: number) => people.value.find(person => person.id === id)
 
-    const getPersonInfo = (person: Person): PersonInfo => {
-      const { firstName, lastName } = toRefs(person)
+    const toComputedProperty = (obj: ComputedRef, key: string) => computed({
+      get: () => obj.value[key],
+      set: (v: string) => {
+        obj.value[key] = v
+      },
+    })
+
+    const getPersonInfo = (person: ComputedRef<Person>): PersonInfo => {
+
+      const firstName = toComputedProperty(person, 'firstName')
+      const lastName = toComputedProperty(person, 'lastName')
 
       // 🧠 imagine this is non-trivial and complicated 🧠
       return {
-        id: computed(() => person.id),
+        id: computed(() => person.value.id),
         firstName,
         lastName,
         fullName: computed(() => firstName.value + ' ' + lastName.value),
@@ -44,11 +58,11 @@ describe('readme examples', async () => {
     }
 
     const person = getPerson(99) as Person
-    const info = getPersonInfo(person)
+    const info = getPersonInfo(computed(() => person))
 
-    expect(info.firstName.value).toBe('Jim')
-    expect(info.lastName.value).toBe('Kirk')
-    expect(info.fullName.value).toBe('Jim Kirk')
+    expect(info.firstName.value).toBe('Bobby')
+    expect(info.lastName.value).toBe('Testerson')
+    expect(info.fullName.value).toBe('Bobby Testerson')
 
     info.firstName.value = 'Jess'
     info.lastName.value = 'Jones'
@@ -62,7 +76,7 @@ describe('readme examples', async () => {
       // auto clears cached object if returns falsy
       (id: number) => getPerson(id),
       // cached object creator
-      (person: Person) => getPersonInfo(person),
+      (record: ComputedRef<Person>, context) => getPersonInfo(record),
     )
 
     const info2 = personInfo.get(99)
@@ -77,10 +91,14 @@ describe('readme examples', async () => {
     expect(info2.firstName).toBe('Sam')
     expect(info2.lastName).toBe('Thompson')
     expect(info2.fullName).toBe('Sam Thompson')
-
   })
 
   it('check readme type explanation is accurate', async () => {
+    type Item = {
+      id: number,
+      name: string,
+    }
+
     type CustomRecordStore = {
       ids(): number[],
       get(id: number): Reactive<Item>,
@@ -137,11 +155,11 @@ describe('readme examples', async () => {
 
       const personInfo = watchRecordStore(
         (id: number) => find(id),
-        (record: Person) => {
-          const { name } = toRefs(record)
+        (record: ComputedRef<Person>) => {
+          const { name } = toWritableComputed(record)
 
           return {
-            id: computed(() => record.id),
+            id: computed(() => record.value.id),
             name,
             nameLength: computed(() => name.value.length || 0),
           }
@@ -149,6 +167,7 @@ describe('readme examples', async () => {
       )
 
       return {
+        find,
         people,
         personInfo,
         get: personInfo.get,
@@ -165,6 +184,7 @@ describe('readme examples', async () => {
     const personStore = usePersonStore()
 
     const person = personStore.get(99)
+    expect(personStore.personInfo.has(99)).toBe(true)
 
     expect(person.name).toBe('Jim')
     expect(person.nameLength).toBe(3)
@@ -187,13 +207,19 @@ describe('readme examples', async () => {
     const samePerson = personStore.get(99)
     expect(samePerson.name).toBe('Ricky')
 
-
-    personStore.remove(99)
-    expect(toValue(personStore.people)).toEqual([])
+    const p = personStore.find(99) as Person
+    p.id = 88
 
     await nextTick()
     expect(personStore.personInfo.has(99)).toBe(false)
-    expect(personStore.personInfo.ids()).toEqual([])
 
+    expect(() => personStore.get(99)).toThrowError('watchRecordStore(): Record id "99" not found.')
+
+    personStore.remove(88)
+    expect(toValue(personStore.people)).toEqual([])
+
+    await nextTick()
+    expect(personStore.personInfo.has(88)).toBe(false)
+    expect(personStore.personInfo.ids()).toEqual([])
   })
 })

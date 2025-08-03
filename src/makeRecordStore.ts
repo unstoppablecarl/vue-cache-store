@@ -55,7 +55,7 @@ export function makeRecordStore<
     clear: () => cache.clear(),
     forEach: (callbackFunction: (value: ReactiveResult, key: ID) => void) => {
       cache.forEach(callbackFunction)
-    }
+    },
   }
 
   return context

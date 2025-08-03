@@ -1,4 +1,4 @@
-import { computed, watch } from 'vue'
+import { computed, type ComputedRef, watch } from 'vue'
 import { makeRecordStore, type RecordStore } from './makeRecordStore'
 
 export function watchRecordStore<
@@ -8,17 +8,17 @@ export function watchRecordStore<
 >
 (
   getRecord: (id: ID) => R | undefined,
-  create: (record: R, context: RecordStore<ID, T>) => T,
+  create: (computedRecord: ComputedRef<R>, context: RecordStore<ID, T>) => T,
 ) {
   type Result = RecordStore<ID, T>
 
-  const creatorFunction = (id: ID, context: Result) => {
+  return makeRecordStore<ID, T>((id: ID, context: Result) => {
 
     const comp = computed(() => getRecord(id))
-    const watcher = watch(comp, () => {
+    const unwatch = watch(comp, () => {
       if (!comp.value) {
         context.remove(id)
-        watcher.stop()
+        unwatch()
       }
     })
 
@@ -26,8 +26,6 @@ export function watchRecordStore<
     if (!record) {
       throw new Error(`watchRecordStore(): Record id "${id}" not found.`)
     }
-    return create(record, context)
-  }
-
-  return makeRecordStore<ID, T>(creatorFunction)
+    return create(comp as ComputedRef<R>, context)
+  })
 }

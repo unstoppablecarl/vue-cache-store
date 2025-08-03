@@ -9,7 +9,7 @@ const config = {
     '@stryker-mutator/typescript-checker',
   ],
   reporters: ['progress', 'clear-text', 'html'],
-  mutate: ['src/**/*', '!src/components/*'],
+  mutate: ['src/**/*'],
   checkers: ['typescript'],
   tsconfigFile: 'tsconfig.json',
   typescriptChecker: {
