@@ -15,9 +15,10 @@ export function watchRecordStore<
   const creatorFunction = (id: ID, context: Result) => {
 
     const comp = computed(() => getRecord(id))
-    watch(comp, () => {
+    const watcher = watch(comp, () => {
       if (!comp.value) {
         context.remove(id)
+        watcher.stop()
       }
     })
 
