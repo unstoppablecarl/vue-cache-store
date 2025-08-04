@@ -8,3 +8,4 @@ export {
   watchRecordStore,
 } from './watchRecordStore'
 export { reactiveToRefs } from './reactiveToRefs'
+export { toWritableComputed } from './toWritableComputed'
