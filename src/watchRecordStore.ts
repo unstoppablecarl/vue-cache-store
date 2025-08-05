@@ -2,9 +2,9 @@ import { computed, type ComputedRef, watch } from 'vue'
 import { makeRecordStore, type RecordStore } from './makeRecordStore'
 
 export function watchRecordStore<
-  ID extends NonNullable<any> = Parameters<Parameters<typeof watchRecordStore>[0]>[0],
-  R extends object = NonNullable<ReturnType<Parameters<typeof watchRecordStore>[0]>>,
-  T extends object = ReturnType<Parameters<typeof watchRecordStore>[1]>,
+  ID extends NonNullable<any>,
+  R extends object,
+  T extends object,
 >
 (
   getRecord: (id: ID) => R | undefined,

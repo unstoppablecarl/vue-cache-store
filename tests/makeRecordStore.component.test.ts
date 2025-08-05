@@ -3,7 +3,7 @@ import { makeRecordStore } from '../src'
 import { mount } from '@vue/test-utils'
 import { computed, reactive, ref, toRef } from 'vue'
 
-describe('define cache store', async () => {
+describe('makeCacheStore() components', async () => {
 
   it('ref()', async () => {
     const x = ref('a')

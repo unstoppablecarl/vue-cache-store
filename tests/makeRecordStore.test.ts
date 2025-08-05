@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { makeRecordStore } from '../src'
 import { computed, type ComputedRef, nextTick, ref, watch } from 'vue'
 
-describe('define cache store', async () => {
+describe('makeCacheStore()', async () => {
 
   it('only run once', async () => {
     const count = ref(0)
