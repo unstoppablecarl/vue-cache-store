@@ -1,19 +1,24 @@
-import { describe, expect, it } from 'vitest'
-import { computed, ref } from 'vue'
-import { toWritableComputed } from '../src/toWritableComputed'
+import { describe, expect, expectTypeOf, it } from 'vitest'
+import { computed, type ComputedRef, type Ref, ref, type WritableComputedRef } from 'vue'
+import { toWritableComputed } from '../src'
 
 describe('toWriteableComputed()', async () => {
   it('computed() -> ref()', async () => {
-    const obj = ref({ a: '1', b: '2' })
+
+    const av = 'something'
+    const bv = 99
+    const obj = ref({ a: av, b: bv })
 
     const comp = computed(() => obj.value)
     const { a, b } = toWritableComputed(comp)
 
-    test(obj, comp, a, b)
+    test(obj, comp, a, b, av, bv)
   })
 
   it('writable computed() -> ref()', async () => {
-    const obj = ref({ a: '1', b: '2' })
+    const av = 'something'
+    const bv = 99
+    const obj = ref({ a: av, b: bv })
     const comp = computed({
       get: () => obj.value,
       set: (val) => {
@@ -23,39 +28,46 @@ describe('toWriteableComputed()', async () => {
 
     const { a, b } = toWritableComputed(comp)
 
-    test(obj, comp, a, b)
+    test(obj, comp, a, b, av, bv)
   })
 
   it('ref()', async () => {
-    const obj = ref({ a: '1', b: '2' })
+    const av = 'something'
+    const bv = 99
+    const obj = ref({ a: av, b: bv })
 
+    const comp = computed(() => obj.value)
     const { a, b } = toWritableComputed(obj)
 
-    expect(obj.value).toEqual({ a: '1', b: '2' })
-    expect(a.value).toEqual('1')
-    expect(b.value).toEqual('2')
 
-    a.value = 'test'
-
-    expect(a.value).toEqual('test')
-    expect(b.value).toEqual('2')
-
-    expect(obj.value).toEqual({ a: 'test', b: '2' })
+    test(obj, comp, a, b, av, bv)
   })
 })
 
-// @ts-expect-error
-function test(obj, comp, a, b) {
-  expect(obj.value).toEqual({ a: '1', b: '2' })
-  expect(comp.value).toEqual({ a: '1', b: '2' })
-  expect(a.value).toEqual('1')
-  expect(b.value).toEqual('2')
+function test(
+  obj: Ref,
+  comp: ComputedRef<any> | WritableComputedRef<any>,
+  a: WritableComputedRef<string>,
+  b: WritableComputedRef<number>,
+  av: string,
+  bv: number,
+) {
+
+  expectTypeOf(a).toEqualTypeOf<WritableComputedRef<string>>()
+  expectTypeOf(b).toEqualTypeOf<WritableComputedRef<number>>()
+  expectTypeOf(a.value).toEqualTypeOf<string>()
+  expectTypeOf(b.value).toEqualTypeOf<number>()
+
+  expect(obj.value).toEqual({ a: av, b: bv })
+  expect(comp.value).toEqual({ a: av, b: bv })
+  expect(a.value).toEqual(av)
+  expect(b.value).toEqual(bv)
 
   a.value = 'test'
 
   expect(a.value).toEqual('test')
-  expect(b.value).toEqual('2')
+  expect(b.value).toEqual(bv)
 
-  expect(obj.value).toEqual({ a: 'test', b: '2' })
-  expect(comp.value).toEqual({ a: 'test', b: '2' })
+  expect(obj.value).toEqual({ a: 'test', b: bv })
+  expect(comp.value).toEqual({ a: 'test', b: bv })
 }
