@@ -6,16 +6,15 @@ export type ToWritableComputed<T = any> = {
 
 export function toWritableComputed<T extends object>(obj: Ref<T> | ComputedRef<T> | WritableComputedRef<T>) {
   const rawStore = toValue(obj)
-  const refs = {}
+  const refs = {} as ToWritableComputed<T>
   for (const key in rawStore) {
-    // @ts-expect-error: too hard to type correctly
     refs[key] = computed({
-      get: () => obj.value[key],
+      get: () => obj.value[key as keyof T],
       set: (v) => {
-        obj.value[key] = v
+        obj.value[key as keyof T] = v
       },
-    })
+    }) as WritableComputedRef<T[typeof key]>
   }
 
-  return refs as ToWritableComputed<T>
+  return refs
 }

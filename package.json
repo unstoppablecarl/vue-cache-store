@@ -1,8 +1,8 @@
 {
   "name": "vue-cache-store",
   "type": "module",
-  "version": "2.2.3",
-  "packageManager": "pnpm@10.13.1",
+  "version": "2.2.4",
+  "packageManager": "pnpm@10.14.0",
   "description": "Cache and re-use computed/reactive properties in vue",
   "author": {
     "name": "Carl Olsen",

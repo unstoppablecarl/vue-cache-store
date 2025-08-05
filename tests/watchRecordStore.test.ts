@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type ComputedRef, nextTick, watch } from 'vue'
+import { type ComputedRef, nextTick } from 'vue'
 import { watchRecordStore } from '../src'
 import { type Person, type PersonInfo, usePeople } from './helpers/people'
 
