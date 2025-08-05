@@ -1,8 +1,35 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { computed, type ComputedRef, type Ref, ref, type WritableComputedRef } from 'vue'
+import { computed, type ComputedRef, nextTick, type Ref, ref, watch, type WritableComputedRef } from 'vue'
+
 import { toWritableComputed } from '../src'
 
 describe('toWriteableComputed()', async () => {
+
+  it('computed() -> computed() -> ref()', async () => {
+    const av = 'something'
+    const bv = 99
+
+    let count = 0
+    const obj = ref({ a: av, b: bv })
+    const compA = computed(() => obj.value)
+
+    watch(() => {
+      return compA.value.a
+    }, (newVal) => {
+      count++
+    })
+    const comp = computed(() => compA.value)
+
+    const { a, b } = toWritableComputed(comp)
+
+    await nextTick()
+    test(obj, comp, a, b, av, bv)
+
+    await nextTick()
+
+    expect(count).toBe(1)
+  })
+
   it('computed() -> ref()', async () => {
 
     const av = 'something'
@@ -70,4 +97,13 @@ function test(
 
   expect(obj.value).toEqual({ a: 'test', b: bv })
   expect(comp.value).toEqual({ a: 'test', b: bv })
+
+  obj.value.a = 'test2'
+
+  expect(a.value).toEqual('test2')
+  expect(b.value).toEqual(bv)
+
+  expect(obj.value).toEqual({ a: 'test2', b: bv })
+  expect(comp.value).toEqual({ a: 'test2', b: bv })
+
 }
