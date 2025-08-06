@@ -10,8 +10,9 @@ Re-usable computed objects based on record objects.
 When using non-trivial derived reactive objects in multiple components.
 
 ⭐️ Examples in this readme reference this case when it has `import { /* ... */ } from 'person-data.ts'`
+
+`person-data.ts`
 ```ts
-// person-data.ts
 import { computed, ref, reactive, type Reactive } from 'vue'
 
 type Person = {
@@ -41,7 +42,7 @@ export const removePerson = (id: number) => {
   }
 }
 
-const toComputedProperty = (obj: ComputedRef, key: string) => computed({
+const toComputed = (obj: ComputedRef, key: string) => computed({
   get: () => obj.value[key],
   set: (v: string) => {
     obj.value[key] = v
@@ -49,8 +50,8 @@ const toComputedProperty = (obj: ComputedRef, key: string) => computed({
 })
 
 const getPersonInfo = (person: ComputedRef<Person>): PersonInfo => {
-  const firstName = toComputedProperty(person, 'firstName')
-  const lastName = toComputedProperty(person, 'lastName')
+  const firstName = toComputed(person, 'firstName')
+  const lastName = toComputed(person, 'lastName')
   
   // 🧠 imagine this is non-trivial and complicated 🧠
   return {
@@ -63,9 +64,8 @@ const getPersonInfo = (person: ComputedRef<Person>): PersonInfo => {
 ```
 
 ### Generic Example
-
+`inside multiple vue components`
 ```vue
-// inside multiple vue components
 <script setup lang="ts">
   import { computed, defineProps } from 'vue'
   import { getPerson, getPersonInfo } from 'person-data.ts'
@@ -89,25 +89,26 @@ const getPersonInfo = (person: ComputedRef<Person>): PersonInfo => {
 
 ### Vue Cache Store Solution
 
-```ts 
-// person-info.ts
+`person-info.ts`
+```ts
 import { watchRecordStore } from 'vue-cache-store'
 // see person-data.ts above ⬆️
 import { getPerson, getPersonInfo, type Person, type PersonInfo } from 'person-data.ts'
 
 export const personInfo = watchRecordStore<number, Person, PersonInfo>(
-  // watches for reactive changes
+  // watched for reactive changes
   // auto clears cached object if returns falsy
   (id: number) => getPerson(id),
-  // person arg is a computed() wrapped result of the watcher function
-  // creates the cached object
-  // re-uses result on subsequent calls
+  
+  // person arg is a computed() wrapped result of the above function
+  // returns the cached object
+  // store reuses result on subsequent calls
   (person: ComputedRef<Person>) => getPersonInfo(person),
 )
 ```
 
+`inside multiple vue components`
 ```vue
-// inside multiple vue components
 <script setup lang="ts">
   import { computed, defineProps } from 'vue'
   import { personInfo } from 'person-info.ts'
@@ -136,9 +137,8 @@ export const personInfo = watchRecordStore<number, Person, PersonInfo>(
 ## How It Works
 
 ### Record Stores `makeRecordStore()`
-
+`person-info.ts`
 ```ts
-// person-info.ts
 import { type ToRefs, type Reactive} from 'vue'
 import { makeRecordStore } from 'vue-cache-store'
 // see person-data.ts above ⬆️
@@ -172,8 +172,8 @@ export const personInfo: CacheStore = makeRecordStore<number, ItemInfo>((id: num
 ### Record Store Context
 The `context` argument is the current record store instance.
 
+`person-info.ts`
 ```ts
-// person-info.ts
 import { makeRecordStore } from 'vue-cache-store'
 
 export const personInfo = makeRecordStore<number, ItemInfo>((id: number, context: CacheStore) => {
@@ -190,9 +190,8 @@ export const personInfo = makeRecordStore<number, ItemInfo>((id: number, context
 ```
 
 ### Watch Record Store `watchRecordStore()`
-
+`person-info.ts`
 ```ts
-// person-info.ts
 import { type ComputedRef } from 'vue'
 import { watchRecordStore } from 'vue-cache-store'
 // see person-data.ts above ⬆️
@@ -240,9 +239,8 @@ personInfo.ids() // []
 ```
 
 #### Usage within a [Pinia](https://pinia.vuejs.org/) store
-
+`person-store.ts`
 ```ts
-// person-store.ts
 import type { ComputedRef } from 'vue'
 import { defineStore } from 'pinia'
 import { watchRecordStore, toWritableComputed } from 'vue-cache-store'
@@ -304,8 +302,9 @@ export const usePersonStore = defineStore('people', () => {
     update,
   }
 })
-
-// inside component
+```
+`inside component`
+```ts
 const personStore = usePersonStore()
 
 // re-usable composite reactive record
@@ -350,7 +349,7 @@ const { foo } = reactiveToRefs(item)
 ```
 
 #### `toWritableComputed()`
-Helpful for allowing mutation of properties on a record while keeping its computed dependency on it.
+Helpful for allowing mutation of properties on a record while keeping its computed dependency linked.
 
 ```ts
 import { toWritableComputed } from 'vue-cache-store'
@@ -362,6 +361,7 @@ const comp = computed(() => obj.value)
 const { a, b } = toWritableComputed(comp)
 
 a.value = 'something'
+obj.a // 'something'
 ```
 
 ## Building

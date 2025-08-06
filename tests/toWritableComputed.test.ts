@@ -15,7 +15,7 @@ describe('toWriteableComputed()', async () => {
 
     watch(() => {
       return compA.value.a
-    }, (newVal) => {
+    }, () => {
       count++
     })
     const comp = computed(() => compA.value)
@@ -63,10 +63,9 @@ describe('toWriteableComputed()', async () => {
     const bv = 99
     const obj = ref({ a: av, b: bv })
 
-    const comp = computed(() => obj.value)
     const { a, b } = toWritableComputed(obj)
 
-
+    const comp = computed(() => obj.value)
     test(obj, comp, a, b, av, bv)
   })
 })

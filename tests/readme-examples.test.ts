@@ -11,7 +11,7 @@ import {
 } from 'vue'
 import { makeRecordStore, type RecordStore, watchRecordStore } from '../src'
 import { createPinia, defineStore, setActivePinia } from 'pinia'
-import { toWritableComputed } from '../src/toWritableComputed'
+import { toWritableComputed } from '../src'
 
 describe('readme examples', async () => {
   it('person data', async () => {
@@ -36,7 +36,7 @@ describe('readme examples', async () => {
     }])
     const getPerson = (id: number) => people.value.find(person => person.id === id)
 
-    const toComputedProperty = (obj: ComputedRef, key: string) => computed({
+    const toComputed = (obj: ComputedRef | WritableComputedRef<any>, key: string) => computed({
       get: () => obj.value[key],
       set: (v: string) => {
         obj.value[key] = v
@@ -45,8 +45,8 @@ describe('readme examples', async () => {
 
     const getPersonInfo = (person: ComputedRef<Person>): PersonInfo => {
 
-      const firstName = toComputedProperty(person, 'firstName')
-      const lastName = toComputedProperty(person, 'lastName')
+      const firstName = toComputed(person, 'firstName')
+      const lastName = toComputed(person, 'lastName')
 
       // 🧠 imagine this is non-trivial and complicated 🧠
       return {
@@ -76,7 +76,7 @@ describe('readme examples', async () => {
       // auto clears cached object if returns falsy
       (id: number) => getPerson(id),
       // cached object creator
-      (record: ComputedRef<Person>, context) => getPersonInfo(record),
+      (record: ComputedRef<Person>) => getPersonInfo(record),
     )
 
     const info2 = personInfo.get(99)
