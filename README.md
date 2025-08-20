@@ -364,6 +364,22 @@ a.value = 'something'
 obj.a // 'something'
 ```
 
+
+#### `toComputed()`
+Helpful for readonly computed properties on a record while keeping its computed dependency linked.
+
+```ts
+import { toComputed } from 'vue-cache-store'
+import { computed } from 'vue'
+
+const obj = ref({ a: '1', b: '2' })
+
+const comp = computed(() => obj.value)
+const { a, b } = toComputed(comp)
+
+obj.a // '1'
+```
+
 ## Building
 
 `$ pnpm install`
